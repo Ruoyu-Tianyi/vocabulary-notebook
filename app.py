@@ -12,7 +12,8 @@ import socket
 import threading
 import uuid
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Optional, Literal
+from pydantic import BaseModel, Field
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -776,6 +777,65 @@ async def event_stream(request: Request):
     )
 
 
+# Model discovery from upstream, adapted to the fork's local secret storage.
+class DeepSeekSettings(BaseModel):
+    api_key: str = Field(default="", max_length=1000)
+    model: str = Field(default="", max_length=100)
+
+
+class ModelSettings(BaseModel):
+    provider: Literal["deepseek"] = "deepseek"
+    deepseek: DeepSeekSettings = Field(default_factory=DeepSeekSettings)
+
+
+async def deepseek_models(api_key: str) -> list[str]:
+    if not api_key:
+        raise HTTPException(400, "请先填写 DeepSeek API Key")
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get("https://api.deepseek.com/models",
+                                    headers={"Authorization": f"Bearer {api_key}"})
+        if resp.status_code in (401, 403):
+            raise HTTPException(400, "DeepSeek API Key 无效或无访问权限")
+        resp.raise_for_status()
+        models = sorted({item["id"] for item in resp.json()["data"]
+                         if isinstance(item.get("id"), str) and item["id"]})
+        if not models:
+            raise ValueError("empty models")
+        return models
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(502, "无法获取 DeepSeek 模型列表，请检查网络后重试；当前模型是否过期尚无法核验")
+
+
+@app.get("/api/model-settings")
+def read_model_settings():
+    return config.public_config()
+
+
+@app.post("/api/model-settings/deepseek-models")
+async def list_deepseek_models(settings: DeepSeekSettings):
+    key = os.environ.get("DEEPSEEK_API_KEY") or settings.api_key.strip() or config.get_deepseek_config()["api_key"]
+    return {"models": await deepseek_models(key)}
+
+
+@app.put("/api/model-settings")
+async def update_model_settings(settings: ModelSettings):
+    key = os.environ.get("DEEPSEEK_API_KEY") or settings.deepseek.api_key.strip() or config.get_deepseek_config()["api_key"]
+    model = os.environ.get("DEEPSEEK_MODEL") or settings.deepseek.model.strip()
+    models = await deepseek_models(key)
+    if model not in models:
+        raise HTTPException(400, "所选模型已不在 DeepSeek 当前可用模型列表中，请刷新列表并重新选择")
+    try:
+        config.save_ai_settings(settings.deepseek.api_key, settings.deepseek.model)
+        return config.public_config()
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    except OSError:
+        raise HTTPException(500, "配置文件保存失败，请检查文件权限")
+
+
 # ─── API: 健康检查 ────────────────────────────────────────
 
 @app.get("/api/health")
@@ -786,13 +846,11 @@ async def health_check():
     if not settings["api_key"]:
         return {**result, "status": "not_configured"}
     try:
-        async with httpx.AsyncClient(timeout=8) as client:
-            resp = await client.get("https://api.deepseek.com/models", headers={"Authorization": "Bearer " + settings["api_key"]})
-            if resp.status_code == 401:
-                return {**result, "status": "unauthorized"}
-            if resp.is_success:
-                available = {item["id"] for item in resp.json().get("data", [])}
-                return {**result, "status": "connected" if settings["model"] in available else "model_unavailable"}
+        available = await deepseek_models(settings["api_key"])
+        return {**result, "status": "connected" if settings["model"] in available else "model_unavailable"}
+    except HTTPException as exc:
+        if exc.status_code == 400:
+            return {**result, "status": "unauthorized"}
     except Exception:
         pass
     return {**result, "status": "disconnected"}

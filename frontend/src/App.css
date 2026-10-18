@@ -1418,3 +1418,47 @@ select option { background: var(--surface); color: var(--text); }
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* 模型选择直接展示选项，避免把选择器误认成普通输入框。 */
+.model-settings { max-width: 720px; padding-bottom: 32px; }
+.model-settings fieldset { border: 0; min-width: 0; }
+.settings-note { color: var(--text-dim); margin: 10px 0 24px; font-size: 13px; }
+.settings-section-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.settings-section-heading h3 { font: 600 15px var(--font-body); color: var(--heading); }
+.settings-step { font-size: 11px; color: var(--accent); border: 1px solid var(--border-light); border-radius: 50%; width: 26px; height: 26px; display: grid; place-items: center; }
+.provider-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 28px; }
+.model-settings .provider-option, .model-settings .model-option { display: flex; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); cursor: pointer; text-transform: none; letter-spacing: normal; margin: 0; transition: border-color .15s, background .15s; }
+.model-settings .provider-option { padding: 18px 16px; align-items: flex-start; }
+.model-settings .is-selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+.model-settings .provider-option:hover, .model-settings .model-option:hover { border-color: var(--accent); }
+.provider-option-body { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.provider-option-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--heading); font-size: 16px; font-weight: 600; }
+.settings-tag { display: inline-block; font: 400 11px var(--font-body); padding: 2px 7px; border-radius: 4px; background: var(--surface-raised); color: var(--text-dim); white-space: nowrap; }
+.provider-option-description { color: var(--text-dim); font-size: 12px; line-height: 1.6; }
+.settings-panel { padding: 24px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.model-settings input:not([type="radio"]) { width: 100%; padding: 12px 14px; border: 1px solid var(--border-light); border-radius: 7px; background: var(--bg); color: var(--text); font: 14px var(--font-body); }
+.model-settings input[type="radio"] { appearance: auto; flex: 0 0 auto; width: 17px; height: 17px; margin: 3px 0 0; padding: 0; accent-color: var(--accent); cursor: pointer; }
+.model-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 24px 0 12px; }
+.model-list-heading h4 { color: var(--heading); font-size: 14px; font-weight: 500; }
+.model-list-heading p { color: var(--text-dim); font-size: 12px; margin-top: 3px; }
+.model-settings button { padding: 10px 18px; border: 1px solid var(--border-light); border-radius: 7px; background: var(--surface-raised); color: var(--text); font: 14px var(--font-body); cursor: pointer; }
+.model-settings .settings-refresh { padding: 7px 10px; font-size: 12px; white-space: nowrap; background: transparent; }
+.model-options { display: grid; gap: 8px; }
+.model-settings .model-option { padding: 14px; background: var(--bg); }
+.model-settings .model-option.is-selected { background: color-mix(in srgb, var(--accent) 8%, var(--bg)); }
+.model-option-name { font: 14px var(--font-body); color: var(--heading); overflow-wrap: anywhere; }
+.model-option-status { margin-left: auto; font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+.is-selected .model-option-status { color: var(--accent); }
+.model-list-empty { padding: 24px 16px; border: 1px dashed var(--border-light); border-radius: 8px; color: var(--text-dim); font-size: 13px; text-align: center; }
+.configured-model { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 16px; font-size: 12px; color: var(--text-dim); }
+.configured-model strong { font-weight: 500; overflow-wrap: anywhere; }
+.is-unavailable strong, .is-unavailable .settings-tag { color: var(--error); }
+.settings-error { color: var(--error); margin-top: 14px; font-size: 13px; line-height: 1.8; }
+.settings-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; }
+.settings-actions > span { color: var(--text-dim); font-size: 12px; }
+.settings-actions button { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; min-width: 112px; }
+.model-settings button:disabled { opacity: .45; cursor: not-allowed; }
+.model-settings input:focus-visible, .model-settings button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.settings-success { color: var(--success); margin-top: 16px; font-size: 13px; }
+.model-status.off { color: var(--error); }
+@media (max-width: 520px) { .provider-options { grid-template-columns: 1fr; gap: 10px; } .model-settings .provider-option { padding: 14px; } .settings-panel { padding: 18px 14px; } }

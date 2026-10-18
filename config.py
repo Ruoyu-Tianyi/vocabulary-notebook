@@ -96,3 +96,10 @@ def get_sync_config() -> dict:
         raise RuntimeError("sync.interval_seconds 必须是 10 到 3600 之间的整数")
     return {"interval_seconds": interval,
             "credentials_dir": sync.get("credentials_dir", ".secrets")}
+
+
+def public_config() -> dict:
+    """Expose upstream model settings without copying keys or sync credentials."""
+    settings = get_ai_settings()
+    return {"provider": "deepseek", "deepseek": {"model": settings["model"],
+            "api_key_configured": settings["configured"], "environment_key": settings["environment_key"]}}

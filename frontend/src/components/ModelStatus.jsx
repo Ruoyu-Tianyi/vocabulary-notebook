@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 
 export default function ModelStatus() {
   const [health, setHealth] = useState(null) // null = checking
@@ -34,12 +35,12 @@ export default function ModelStatus() {
   const label = { not_configured: '待配置 API Key', unauthorized: 'API Key 无效', model_unavailable: '模型不可用', disconnected: '连接失败' }[status] || '连接失败'
 
   return (
-    <span
+    <Link to="/settings"
       className={`model-status ${connected ? 'on' : 'off'}`}
       title={connected ? `${providerLabel} 已连接 · ${health.model}` : `${providerLabel} ${label}，请在“同步与备份”配置`}
     >
       <span className="model-dot" />
       {connected ? `${providerLabel} 已连接` : `${providerLabel} ${label}`}
-    </span>
+    </Link>
   )
 }
