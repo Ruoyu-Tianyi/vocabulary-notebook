@@ -156,7 +156,7 @@ export default function WordNew() {
         </div>
         <p style={{ marginTop: 14, fontSize: 12, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
           Enter 保存 · Esc 返回 · 释义由 {providerLabel} API 补充，生成后显示在下方；离线也能保存
-          <br />普通词自动小写开头；API、iPhone 等保留原拼写，需要调整时可在详情编辑。
+          <br />新词首字母统一大写，其余字符保持输入的大小写；已有词条不改名。
         </p>
       </form>
       {addedWords.length > 0 && <section className="added-words" aria-labelledby="added-words-heading">

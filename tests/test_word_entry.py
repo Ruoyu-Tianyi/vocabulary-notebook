@@ -62,21 +62,23 @@ def test_existing_unfinished_word_returns_current_status_without_retrying(client
 
 
 @pytest.mark.parametrize(("entered", "stored"), [
-    ("  Contract  ", "contract"), ("Contract law", "contract law"),
-    ("API", "API"), ("I", "I"), ("iPhone", "iPhone"),
-    ("McDonald", "McDonald"), ("DNA-binding", "DNA-binding"), ("contract", "contract"),
+    ("  contract  ", "Contract"), ("contract law", "Contract law"),
+    ("API", "API"), ("I", "I"), ("iPhone", "IPhone"),
+    ("McDonald", "McDonald"), ("DNA-binding", "DNA-binding"), ("Contract", "Contract"),
+    ("i", "I"), ("eBay", "EBay"),
 ])
-def test_new_word_initial_is_normalized_without_changing_special_spellings(client, entered, stored):
+def test_new_word_initial_is_uppercase_and_remaining_characters_are_preserved(client, entered, stored):
     result = client.post("/api/words", json={"word": entered, "definition": "n. 测试"})
     assert result.status_code == 200
     assert result.json()["word"]["word"] == stored
     assert app.load_words()["words"][0]["word"] == stored
 
 
-def test_existing_capitalization_and_manual_edits_are_preserved(client):
+@pytest.mark.parametrize("spelling", ["London", "london", "iPhone"])
+def test_existing_capitalization_and_manual_edits_are_preserved(client, spelling):
     created = client.post("/api/words", json={"word": "London", "definition": "n. 伦敦"}).json()["word"]
-    assert client.put(f"/api/words/{created['id']}", json={"word": "London"}).status_code == 200
+    assert client.put(f"/api/words/{created['id']}", json={"word": spelling}).status_code == 200
     original = app.DATA_FILE.read_bytes()
-    result = client.post("/api/words", json={"word": "london"})
-    assert result.json()["detail"]["word"]["word"] == "London"
+    result = client.post("/api/words", json={"word": spelling.swapcase()})
+    assert result.json()["detail"]["word"]["word"] == spelling
     assert app.DATA_FILE.read_bytes() == original

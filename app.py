@@ -1298,9 +1298,9 @@ async def retry_word_enrichment(word_id: str):
 
 
 def _normalize_new_word(text: str) -> str:
-    """Lower a title-cased English initial; retain acronyms and internal capitalization."""
-    if len(text) > 1 and "A" <= text[0] <= "Z" and text[1:].islower():
-        return text[0].lower() + text[1:]
+    """Uppercase the English initial of a new entry without altering the remaining text."""
+    if text and "a" <= text[0] <= "z":
+        return text[0].upper() + text[1:]
     return text
 
 

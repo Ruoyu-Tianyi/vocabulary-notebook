@@ -146,7 +146,7 @@ def test_worker_result_is_available_without_sse_and_retry_is_deduplicated(tmp_pa
             assert fetched["enrichment"]["status"] == "ready"
             assert fetched["word"]["definition"] == "n. 合同"
             await app.retry_word_enrichment(word_id)
-            assert app._enrich_queue.qsize() == 0 and calls == ["contract"]
+            assert app._enrich_queue.qsize() == 0 and calls == ["Contract"]
         finally:
             worker.cancel()
             with pytest.raises(asyncio.CancelledError):
