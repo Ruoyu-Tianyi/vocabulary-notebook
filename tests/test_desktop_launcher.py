@@ -78,7 +78,13 @@ from desktop_service import installation_id
 async def lifespan(app):
     Path('started').write_text('ready')
     yield
-    await asyncio.sleep(0.1)
+    def finish_io():
+        import time
+        Path('io-started').write_text('busy')
+        time.sleep(0.6)
+        Path('io-finished').write_text('saved')
+    asyncio.create_task(asyncio.to_thread(finish_io))
+    await asyncio.sleep(0.05)
     Path('finished').write_text('saved')
 app = FastAPI(lifespan=lifespan)
 @app.get('/api/instance')
@@ -110,8 +116,14 @@ async def events():
                 lines = response.iter_lines()
                 assert next(lines) == 'data: heartbeat'
                 stop.write_text('stop')
+                deadline = time.monotonic() + 10
+                while process.poll() is None and time.monotonic() < deadline:
+                    if (root / 'finished').exists() and not (root / 'io-finished').exists():
+                        assert (runtime / 'desktop-service.json').exists(), 'Launcher must wait for executor writes before reporting stopped'
+                    time.sleep(0.02)
                 assert process.wait(timeout=10) == 0
         assert (root / 'finished').read_text() == 'saved'
+        assert (root / 'io-finished').read_text() == 'saved'
         assert not (runtime / 'desktop-service.json').exists() and not stop.exists()
         assert (root / 'words.json').read_bytes() == original
     finally:

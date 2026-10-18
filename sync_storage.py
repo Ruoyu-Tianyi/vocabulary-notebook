@@ -131,6 +131,11 @@ def materialize(meta):
         if key in deleted:
             continue
         if key[0] == "notebook":
+            if key[1] == DEFAULT_BOOK:
+                # The implicit default book can have only a description operation.
+                # Preserve its fallback fields when materializing that partial state.
+                entity.setdefault("name", "默认单词本")
+                entity.setdefault("description", "原词库与日常积累")
             books.append(entity)
         elif entity.get("word"):
             entity.setdefault("notebook_id", DEFAULT_BOOK)
@@ -164,6 +169,10 @@ def read(path: Path):
             data = commit(path, data, previous={"words": [], "notebooks": [], "_sync": fresh()})
         if data["_sync"].get("version") != VERSION:
             raise ValueError("不支持的词库版本，请升级应用")
+        for book in data.get("notebooks", []):
+            if book.get("id") == DEFAULT_BOOK:
+                book.setdefault("name", "默认单词本")
+                book.setdefault("description", "原词库与日常积累")
         return data
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         # Fail closed. Never replace a damaged cache with an empty cloud library.

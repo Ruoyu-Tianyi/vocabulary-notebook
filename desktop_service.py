@@ -40,9 +40,6 @@ async def serve(root, stop_file, port):
             await watcher
         except asyncio.CancelledError:
             pass
-        if metadata.exists() and json.loads(metadata.read_text(encoding='utf-8')).get('pid') == os.getpid():
-            metadata.unlink()
-        stop_file.unlink(missing_ok=True)
 
 
 def main():
@@ -70,6 +67,16 @@ def main():
             import traceback
             traceback.print_exc()
             return 1
+        finally:
+            # asyncio.run also joins outstanding executor threads. Only now may the
+            # launcher/backup tool consider every background write finished.
+            metadata = runtime / 'desktop-service.json'
+            try:
+                if json.loads(metadata.read_text(encoding='utf-8')).get('pid') == os.getpid():
+                    metadata.unlink()
+            except (FileNotFoundError, json.JSONDecodeError):
+                pass
+            stop_file.unlink(missing_ok=True)
     return 0
 
 

@@ -33,6 +33,7 @@ export default function WordNew() {
   const updateAdded = useCallback(result => {
     setAddedWords(previous => previous.map(entry => {
       if (entry.word.id !== result.word.id) return entry
+      if (['removed', 'deleted'].includes(entry.enrichment?.status)) return entry
       if (entry.word.definition && !result.word.definition) return entry
       return { ...entry, ...result }
     }))

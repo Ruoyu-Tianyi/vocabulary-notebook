@@ -59,21 +59,26 @@ export default function WordList() {
   const [enriching, setEnriching] = useState(false)
   const [toast, setToast] = useState('')
   const [sseDisconnected, setSseDisconnected] = useState(false)
+  const [libraryVersion, setLibraryVersion] = useState(0)
 
-  useEffect(() => { fetchDates().then(d => setDates(d.dates)).catch(() => {}) }, [])
+  useEffect(() => { fetchDates().then(d => setDates(d.dates)).catch(() => {}) }, [libraryVersion])
 
   useEffect(() => {
+    let alive = true
     setLoading(true)
     setError('')
     fetchWords({ q, date, page, sort, letter })
       .then(data => {
+        if (!alive) return
         setWords(data.words)
         setTotalPages(data.pages)
         setAvailableLetters(data.available_letters || [])
+        if (page > Math.max(1, data.pages)) setPage(Math.max(1, data.pages))
       })
-      .catch(() => setError('加载失败，请确认后端服务是否运行'))
-      .finally(() => setLoading(false))
-  }, [q, date, page, sort, letter])
+      .catch(() => { if (alive) setError('加载失败，请确认后端服务是否运行') })
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+  }, [q, date, page, sort, letter, libraryVersion])
 
   function toggleLetter(l) {
     setLetter(prev => (prev === l ? '' : l))
@@ -91,6 +96,7 @@ export default function WordList() {
   const handleEnrichFailed = useCallback((wordId, word, reason, result = {}) => {
     if (result.removed) {
       setWords(previous => previous.filter(entry => entry.id !== wordId))
+      setLibraryVersion(previous => previous + 1)
       window.dispatchEvent(new Event('library-changed'))
       window.dispatchEvent(new Event('review-stats-changed'))
     }
