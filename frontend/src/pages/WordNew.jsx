@@ -33,13 +33,13 @@ export default function WordNew() {
   const updateAdded = useCallback(result => {
     setAddedWords(previous => previous.map(entry => {
       if (entry.word.id !== result.word.id) return entry
-      if (entry.word.definition && ['queued', 'processing'].includes(result.enrichment?.status)) return entry
-      return result
+      if (entry.word.definition && !result.word.definition) return entry
+      return { ...entry, ...result }
     }))
   }, [])
   const handleEnriched = useCallback((id, fields) => {
     setAddedWords(previous => previous.map(entry => entry.word.id === id
-      ? { word: { ...entry.word, ...fields }, enrichment: { status: 'ready' } } : entry))
+      ? { ...entry, word: { ...entry.word, ...fields }, enrichment: { status: 'ready' } } : entry))
     window.dispatchEvent(new Event('review-stats-changed'))
   }, [])
   const handleFailed = useCallback((id, _word, reason) => {
@@ -78,6 +78,15 @@ export default function WordNew() {
     catch (err) { updateAdded({ ...entry, enrichment: { status: 'failed', error: err.message } }) }
   }
 
+  function showRecent(result) {
+    setAddedWords(previous => [result, ...previous.filter(entry => entry.word.id !== result.word.id)].slice(0, 10))
+  }
+
+  function clearSubmitted(submitted) {
+    setWord(current => current.trim() === submitted ? '' : current)
+    inputRef.current?.focus()
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     if (!word.trim()) return
@@ -85,15 +94,18 @@ export default function WordNew() {
     setLoading(true)
     try {
       const result = await createWord(submitted, '', bookId)
-      setAddedWords(previous => [result, ...previous].slice(0, 10))
-      setWord(current => current.trim() === submitted ? '' : current)
-      inputRef.current?.focus()
+      showRecent(result)
+      clearSubmitted(submitted)
       window.dispatchEvent(new Event('library-changed'))
       window.dispatchEvent(new Event('review-stats-changed'))
-      setToast({ type: 'info', msg: `「${submitted}」已保存` })
+      setToast({ type: 'info', msg: `「${result.word.word}」已保存` })
       setTimeout(() => setToast(null), 2000)
     } catch (err) {
-      if (err.status === 409) {
+      if (err.status === 409 && err.details?.word?.id) {
+        showRecent({ word: err.details.word, enrichment: err.details.enrichment, existing: true })
+        clearSubmitted(submitted)
+        setToast({ type: 'info', msg: err.message })
+      } else if (err.status === 409) {
         setToast({ type: 'warn', msg: err.message })
       } else {
         setToast({ type: 'error', msg: err.message })
@@ -144,11 +156,12 @@ export default function WordNew() {
         </div>
         <p style={{ marginTop: 14, fontSize: 12, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
           Enter 保存 · Esc 返回 · 释义由 {providerLabel} API 补充，生成后显示在下方；离线也能保存
+          <br />普通词自动小写开头；API、iPhone 等保留原拼写，需要调整时可在详情编辑。
         </p>
       </form>
       {addedWords.length > 0 && <section className="added-words" aria-labelledby="added-words-heading">
         <h3 id="added-words-heading">刚刚添加 · 即时记忆</h3>
-        <p className="book-description">本页展示最近添加的 10 个单词，所有词汇均已保存到单词本。</p>
+        <p className="book-description">本页展示最近添加或再次查看的 10 个单词，重复输入会直接显示已有内容。</p>
         <div aria-live="polite" aria-relevant="additions text">
           {addedWords.map(entry => {
             const current = entry.word
@@ -156,6 +169,7 @@ export default function WordNew() {
             const pending = ['queued', 'processing'].includes(status)
             return <article className="added-word-card" key={current.id}>
               <div className="added-word-head"><h4>{current.word}</h4>
+                {entry.existing && <span className="existing-word-badge">单词本中已有</span>}
                 {current.phonetic && <span>{current.phonetic}</span>}
                 <span className="book-description">{books.find(book => book.id === current.notebook_id)?.name}</span></div>
               {current.definition ? <p className="added-definition">{current.definition}</p>

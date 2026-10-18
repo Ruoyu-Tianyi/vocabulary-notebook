@@ -1297,9 +1297,16 @@ async def retry_word_enrichment(word_id: str):
     return {"word": word, "enrichment": _word_enrichment(word)}
 
 
+def _normalize_new_word(text: str) -> str:
+    """Lower a title-cased English initial; retain acronyms and internal capitalization."""
+    if len(text) > 1 and "A" <= text[0] <= "Z" and text[1:].islower():
+        return text[0].lower() + text[1:]
+    return text
+
+
 @app.post("/api/words")
 async def create_word(body: dict):
-    word_text = _text(body, "word", limit=200)
+    word_text = _normalize_new_word(_text(body, "word", limit=200))
     if not word_text:
         raise HTTPException(status_code=422, detail="单词不能为空")
     with _write_lock:
@@ -1308,8 +1315,10 @@ async def create_word(body: dict):
         if not notebook_id:
             raise HTTPException(422, "请选择保存到的单词本")
         scoped = _book_words(data, notebook_id)
-        if any(w["word"].casefold() == word_text.casefold() for w in scoped):
-            raise HTTPException(409, f"「{word_text}」已在这个单词本中")
+        existing = next((w for w in scoped if w["word"].casefold() == word_text.casefold()), None)
+        if existing is not None:
+            raise HTTPException(409, {"message": f"「{existing['word']}」已在这个单词本中，已展示已有内容",
+                                      "word": existing, "enrichment": _word_enrichment(existing)})
         word_id = uuid.uuid4().hex
         word_obj = {"id": word_id, "word": word_text, "notebook_id": notebook_id,
                     "definition": _text(body, "definition"), "phonetic": _text(body, "phonetic"),

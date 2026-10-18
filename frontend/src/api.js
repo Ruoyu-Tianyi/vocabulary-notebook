@@ -15,8 +15,9 @@ async function request(url, options = {}) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }))
-    const error = new Error(err.detail || '请求失败')
+    const error = new Error(typeof err.detail === 'string' ? err.detail : err.detail?.message || '请求失败')
     error.status = res.status
+    error.details = err.detail
     throw error
   }
   return res

@@ -48,6 +48,7 @@ select { max-width: 100%; }
 .added-word-card { margin-bottom: 16px; padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow-wrap: anywhere; }
 .added-word-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; }
 .added-word-head h4 { font-size: 25px; color: var(--heading); }
+.existing-word-badge { padding: 2px 7px; border: 1px solid var(--border-light); border-radius: 4px; font-size: 11px; }
 .added-word-head > span { color: var(--text-dim); }
 .added-definition { white-space: pre-wrap; margin: 14px 0; }
 .added-example { margin: 12px 0; padding-left: 12px; border-left: 2px solid var(--accent); color: var(--text-dim); }
