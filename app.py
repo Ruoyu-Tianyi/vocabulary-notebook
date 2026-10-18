@@ -3,6 +3,7 @@ import asyncio
 import csv
 import html as html_mod
 import io
+import ipaddress
 import math
 import json
 import os
@@ -25,6 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from fpdf import FPDF
 
 import config
+from event_broadcast import EventBroadcast
 import fsrs
 import sync_storage
 from drive_sync import DriveSync
@@ -51,7 +53,7 @@ async def lifespan(app: FastAPI):
     except Exception:
         cache_lock.close()
         raise
-    _event_queue = asyncio.Queue()
+    _event_queue = EventBroadcast()
     _enrich_queue = asyncio.Queue()
     _enrich_jobs.clear()
     _enriching_ids.clear()
@@ -119,6 +121,13 @@ app.add_middleware(
 
 @app.middleware("http")
 async def local_origin_guard(request: Request, call_next):
+    # Host and Origin are user-supplied. Authorize the actual socket peer too.
+    try:
+        local_peer = request.client is not None and ipaddress.ip_address(request.client.host).is_loopback
+    except ValueError:
+        local_peer = False
+    if not local_peer:
+        return JSONResponse({"detail": "仅允许本机访问词汇本"}, status_code=403)
     origin = request.headers.get("origin")
     if request.method not in ("GET", "HEAD", "OPTIONS") and origin and origin not in (
         "http://localhost:1400", "http://127.0.0.1:1400", "http://localhost:5173", "http://127.0.0.1:5173"
@@ -532,6 +541,9 @@ def now_iso() -> str:
 
 def _parse_review_time(value: str) -> datetime:
     """解析复习时间；兼容早期可能写入的无时区 ISO 字符串。"""
+    # Python 3.9 accepts an explicit UTC offset, but not the ISO UTC suffix Z.
+    if isinstance(value, str) and value.endswith("Z"):
+        value = value[:-1] + "+00:00"
     parsed = datetime.fromisoformat(value)
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=CHINA_TZ)
@@ -739,17 +751,19 @@ async def event_stream(request: Request):
     async def generate():
         if _event_queue is None:
             return
-        try:
-            while True:
-                if await request.is_disconnected():
-                    break
-                try:
-                    event = await asyncio.wait_for(_event_queue.get(), timeout=15)
-                    yield f"data: {json.dumps(event)}\n\n"
-                except asyncio.TimeoutError:
-                    yield ": keepalive\n\n"
-        except asyncio.CancelledError:
-            pass
+        with _event_queue.subscribe() as events:
+            try:
+                yield ": connected\n\n"
+                while True:
+                    if await request.is_disconnected():
+                        break
+                    try:
+                        event = await asyncio.wait_for(events.get(), timeout=15)
+                        yield f"data: {json.dumps(event)}\n\n"
+                    except asyncio.TimeoutError:
+                        yield ": keepalive\n\n"
+            except asyncio.CancelledError:
+                pass
 
     return StreamingResponse(
         generate(),
@@ -1350,6 +1364,7 @@ async def _enrich_worker():
             if current_word is None:
                 continue
             book = next((b for b in current_data["notebooks"] if b["id"] == current_word.get("notebook_id")), {})
+            notebook_id = current_word.get("notebook_id", "default")
             context = book.get("name", "") + ": " + book.get("description", "")
             phonetic, definition, example = await enrich_word(word_text, context)
             if not phonetic and not definition and not example:
@@ -1387,6 +1402,10 @@ async def _enrich_worker():
                 data = load_words()
                 for w in data["words"]:
                     if w["id"] == word_id and w["word"] == word_text:
+                        current_book = next((b for b in data["notebooks"] if b["id"] == w.get("notebook_id")), {})
+                        current_context = current_book.get("name", "") + ": " + current_book.get("description", "")
+                        if w.get("notebook_id", "default") != notebook_id or current_context != context:
+                            break  # Never write an answer generated for a different course.
                         if phonetic and not w.get("phonetic"):
                             w["phonetic"] = phonetic
                         if definition and not w.get("definition"):
@@ -1398,6 +1417,14 @@ async def _enrich_worker():
                         break
 
             _enrich_batch_done += 1
+            if written is None:
+                reason = "单词或课程信息已更改，旧补全结果未写入，请重新补全。"
+                _enrich_jobs[word_id] = {"status": "failed", "error": reason}
+                _enriching_ids.pop(word_id, None)
+                if _event_queue is not None:
+                    await _event_queue.put({"type": "enrich_failed", "word_id": word_id,
+                                            "word": word_text, "reason": reason})
+                continue
             _enrich_jobs[word_id] = {"status": "ready" if written and written["definition"] else "idle"}
             if written is not None and _event_queue is not None:
                 await _event_queue.put({
@@ -1582,4 +1609,4 @@ if __name__ == "__main__":
     print("═" * 52)
     print()
 
-    uvicorn.run(app, host=host, port=port, log_level="warning")
+    uvicorn.run(app, host=host, port=port, log_level="warning", proxy_headers=False)

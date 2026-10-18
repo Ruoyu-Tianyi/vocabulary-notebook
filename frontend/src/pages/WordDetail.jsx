@@ -16,13 +16,31 @@ export default function WordDetail() {
   const [editPhonetic, setEditPhonetic] = useState('')
   const [editExample, setEditExample] = useState('')
   const [saveError, setSaveError] = useState('')
+  const [syncNotice, setSyncNotice] = useState('')
   const { books } = useBooks()
 
   useEffect(() => {
-    fetchWord(id)
-      .then(data => setWord(data.word))
-      .catch(() => setError('单词不存在'))
-      .finally(() => setLoading(false))
+    let active = true
+    let request = 0
+    async function refresh(fromCloud = false) {
+      const current = ++request
+      try {
+        const data = await fetchWord(id)
+        if (!active || current !== request) return
+        setWord(data.word)
+        if (fromCloud) setSyncNotice('云端内容已更新，当前未保存的编辑已保留。保存会提交编辑框中的内容。')
+      } catch {
+        if (!active || current !== request) return
+        if (fromCloud) setSyncNotice('无法刷新此单词，它可能已在另一台电脑删除。当前编辑仍已保留，请先复制需要的内容。')
+        else setError('单词不存在')
+      } finally {
+        if (active && current === request) setLoading(false)
+      }
+    }
+    const onCloudChange = () => refresh(true)
+    window.addEventListener('cloud-data-changed', onCloudChange)
+    refresh()
+    return () => { active = false; window.removeEventListener('cloud-data-changed', onCloudChange) }
   }, [id])
 
   function startEdit() {
@@ -41,6 +59,7 @@ export default function WordDetail() {
       const result = await updateWord(id, { word: editWord, definition: editDef, notebook_id: editBook, phonetic: editPhonetic, example: editExample })
       setWord(result.word)
       setEditing(false)
+      setSyncNotice('')
       window.dispatchEvent(new Event('library-changed'))
       window.dispatchEvent(new Event('review-stats-changed'))
     } catch (err) { setSaveError(err.message) }
@@ -103,6 +122,7 @@ export default function WordDetail() {
               </div>
               <div className="form-group"><label htmlFor="edit-phonetic">音标</label><input id="edit-phonetic" type="text" value={editPhonetic} onChange={e => setEditPhonetic(e.target.value)} /></div>
               <div className="form-group"><label htmlFor="edit-example">课程例句</label><textarea id="edit-example" rows={3} value={editExample} onChange={e => setEditExample(e.target.value)} /></div>
+              {syncNotice && <p role="status">{syncNotice}</p>}
               {saveError && <p role="alert">{saveError}</p>}
               <div className="btn-group">
                 <button type="submit" className="btn btn-primary">保存</button>

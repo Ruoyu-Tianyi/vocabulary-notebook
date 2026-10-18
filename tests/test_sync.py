@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 import httpx
 import pytest
-from fastapi.testclient import TestClient
+from tests.local_client import TestClient
 
 import app
 import drive_sync

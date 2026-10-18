@@ -28,6 +28,9 @@ def atomic_write(path: Path, data: dict):
 
 
 def _time(value):
+    # Python 3.9 accepts an explicit UTC offset, but not the ISO UTC suffix Z.
+    if isinstance(value, str) and value.endswith("Z"):
+        value = value[:-1] + "+00:00"
     parsed = datetime.fromisoformat(value)
     return parsed.replace(tzinfo=timezone(timedelta(hours=8))) if parsed.tzinfo is None else parsed
 

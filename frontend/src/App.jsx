@@ -63,7 +63,7 @@ export default function App() {
         <div className="status-services"><ModelStatus /><CloudStatus /></div>
       </div>
       <main className="app-main">
-        <Routes key={location.pathname === '/settings' ? 'settings' : location.pathname === '/word/new' ? `add:${active}` : `${active}:${cloudVersion}`}>
+        <Routes key={location.pathname === '/settings' ? 'settings' : location.pathname === '/word/new' ? `add:${active}` : location.pathname.startsWith('/word/') ? location.pathname : `${active}:${cloudVersion}`}>
           <Route path="/" element={<WordList searchInputRef={searchInputRef} />} />
           <Route path="/word/new" element={<WordNew />} />
           <Route path="/word/:id" element={<WordDetail />} />

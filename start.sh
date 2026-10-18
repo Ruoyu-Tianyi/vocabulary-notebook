@@ -5,11 +5,11 @@ cd "$(dirname "$0")"
 
 echo "Starting backend (uvicorn with auto-reload)..."
 source .venv/bin/activate 2>/dev/null || true
-uvicorn app:app --host 127.0.0.1 --port 1400 --reload &
+uvicorn app:app --host 127.0.0.1 --port 1400 --no-proxy-headers --reload &
 BACKEND_PID=$!
 
 echo "Starting frontend (Vite dev server)..."
-cd frontend && npm run dev &
+cd frontend && npm run dev -- --host 127.0.0.1 &
 FRONTEND_PID=$!
 
 echo ""
