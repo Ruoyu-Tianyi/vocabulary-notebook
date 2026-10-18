@@ -317,7 +317,8 @@ def test_deepseek_request_auth_json_and_course_context(monkeypatch):
 def test_missing_deepseek_key_never_sends_network_request(monkeypatch):
     monkeypatch.setattr(app.config, "get_deepseek_config", lambda: {"api_key": "", "model": "deepseek-flash"})
     monkeypatch.setattr(app.httpx, "AsyncClient", lambda **_: pytest.fail("No key must not send a request"))
-    assert asyncio.run(app.enrich_word("bond")) == ("", "", "")
+    with pytest.raises(app.EnrichmentUnavailable):
+        asyncio.run(app.enrich_word("bond"))
     assert asyncio.run(app.health_check())["status"] == "not_configured"
 
 
@@ -328,7 +329,8 @@ def test_deepseek_failure_is_safe_and_does_not_log_keys(monkeypatch, caplog, sta
     transport = httpx.MockTransport(lambda request: httpx.Response(status, json={"error": {"message": secret}}))
     monkeypatch.setattr(app.httpx, "AsyncClient", lambda **kwargs: real_client(transport=transport, **kwargs))
     monkeypatch.setattr(app.config, "get_deepseek_config", lambda: {"api_key": secret, "model": "deepseek-flash"})
-    assert asyncio.run(app.enrich_word("bond")) == ("", "", "")
+    with pytest.raises(app.EnrichmentUnavailable):
+        asyncio.run(app.enrich_word("bond"))
     assert secret not in caplog.text
 
 

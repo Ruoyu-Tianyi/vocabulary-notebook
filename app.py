@@ -57,6 +57,7 @@ async def lifespan(app: FastAPI):
     _event_queue = EventBroadcast()
     _enrich_queue = asyncio.Queue()
     _enrich_jobs.clear()
+    _new_enrichment_candidates.clear()
     _enriching_ids.clear()
     worker_task = asyncio.create_task(_enrich_worker())
     backup_task = asyncio.create_task(_periodic_backup_loop())
@@ -152,6 +153,13 @@ _enrich_queue: Optional[asyncio.Queue] = None
 # word_id → 上次尝试时间戳，冷却期内不重复入队
 _enriching_ids: dict[str, float] = {}
 _enrich_jobs: dict[str, dict] = {}
+# Only entries created during this app session can be removed automatically.
+_new_enrichment_candidates: dict[str, dict] = {}
+
+
+class EnrichmentUnavailable(RuntimeError):
+    """A service/format failure does not mean the input word is invalid."""
+
 _ENRICH_COOLDOWN = 300  # 秒
 # 进度追踪
 _enrich_current: Optional[str] = None
@@ -720,7 +728,7 @@ Reply ONLY with a JSON object, no other text:
     try:
         settings = config.get_deepseek_config()
         if not settings["api_key"]:
-            return "", "", ""
+            raise EnrichmentUnavailable("请先配置 DeepSeek API Key")
         async with httpx.AsyncClient(timeout=120) as client:
             resp = await client.post("https://api.deepseek.com/chat/completions", json={
                 "model": settings["model"], "messages": [{"role": "user", "content": prompt}],
@@ -732,15 +740,18 @@ Reply ONLY with a JSON object, no other text:
 
         match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
         if not match:
-            logger.warning("[enrich] DeepSeek 响应中未找到 JSON 对象")
-            return "", "", ""
+            raise EnrichmentUnavailable("DeepSeek 返回格式不完整，请重试补全")
         data = json.loads(match.group())
-        fields = tuple(data.get(key, "") for key in ("phonetic", "definition", "example"))
-        return fields if all(isinstance(value, str) for value in fields) else ("", "", "")
+        keys = ("phonetic", "definition", "example")
+        if not isinstance(data, dict) or any(key not in data or not isinstance(data[key], str) for key in keys):
+            raise EnrichmentUnavailable("DeepSeek 返回格式不完整，请重试补全")
+        return tuple(data[key].strip() for key in keys)
+    except EnrichmentUnavailable:
+        raise
     except Exception as e:
         code = e.response.status_code if isinstance(e, httpx.HTTPStatusError) else "unavailable"
         logger.warning("[enrich] DeepSeek 请求失败：%s (%s)", type(e).__name__, code)
-        return "", "", ""
+        raise EnrichmentUnavailable("DeepSeek 服务暂不可用，请检查 API Key、余额与网络后重试") from None
 
 
 # ─── API: SSE 事件流 ──────────────────────────────────────
@@ -1397,12 +1408,47 @@ async def create_word(body: dict):
                     "example": _text(body, "example"), "created_at": now_iso()}
         data["words"].append(word_obj)
         save_words(data)
+        if not any(word_obj.get(field) for field in ("definition", "phonetic", "example")):
+            stored = load_words()
+            _new_enrichment_candidates[word_id] = {
+                "word": dict(word_obj), "operations": _word_operation_ids(stored, word_id)}
 
     # 送入补全队列，后台串行处理（持续累加，不重置 — 用户显式补全缺失才是新一批）
     if not word_obj["definition"] and _enrich_queue is not None and config.get_ai_settings()["configured"]:
         await _enqueue_enrich_batch([(word_id, word_text)])
 
     return {"word": word_obj, "enrichment": _word_enrichment(word_obj)}
+
+
+def _word_operation_ids(data, word_id):
+    return frozenset(op["id"] for op in data["_sync"]["operations"].values()
+                     if op["entity"] == "word" and op["entity_id"] == word_id)
+
+
+def _discard_unrecognized_new_word(word_id, notebook_id, context):
+    candidate = _new_enrichment_candidates.get(word_id)
+    if candidate is None:
+        return False
+    with _write_lock:
+        data = load_words()
+        word = next((w for w in data["words"] if w["id"] == word_id), None)
+        book = next((b for b in data["notebooks"] if b["id"] == notebook_id), {})
+        current_context = book.get("name", "") + ": " + book.get("description", "")
+        if (word != candidate["word"] or current_context != context
+                or _word_operation_ids(data, word_id) != candidate["operations"]):
+            return False  # Protect edits, moves, reviews and changes from another device.
+        data["words"] = [w for w in data["words"] if w["id"] != word_id]
+        save_words(data)  # Persist a tombstone, so an offline device cannot restore the typo.
+    return True
+
+
+async def _reject_unrecognized(word_id, word_text, notebook_id, context):
+    removed = _discard_unrecognized_new_word(word_id, notebook_id, context)
+    reason = "未识别为有效词汇，已自动移除本次新增内容，请检查拼写后重新输入。" if removed else "未识别为有效词汇，已有或已修改的内容已保留，请检查拼写。"
+    _enrich_jobs[word_id] = {"status": "removed" if removed else "failed", "error": reason}
+    if _event_queue is not None:
+        await _event_queue.put({"type": "enrich_failed", "word_id": word_id,
+                                "word": word_text, "reason": reason, "removed": removed})
 
 
 async def _enrich_worker():
@@ -1426,23 +1472,17 @@ async def _enrich_worker():
             context = book.get("name", "") + ": " + book.get("description", "")
             phonetic, definition, example = await enrich_word(word_text, context)
             if not phonetic and not definition and not example:
-                _enrich_jobs[word_id] = {"status": "failed", "error": "DeepSeek 未返回有效释义，请检查 API Key、余额与网络后重试。"}
-                # 全空响应。词组(空格)静默不打扰 — 可能是 deepseek 对该词组不熟;
-                # 单个词推 toast 提示 — 可能是拼错/不存在/网络失败。
-                logger.warning(f"[enrich] {word_text} — deepseek 返回空")
-                if " " not in word_text and _event_queue is not None:
-                    await _event_queue.put({
-                        "type": "enrich_failed",
-                        "word_id": word_id,
-                        "word": word_text,
-                        "reason": "DeepSeek 未返回有效内容，请检查本机 API Key、余额与网络，或手动填写释义",
-                    })
-                _enriching_ids.pop(word_id, None)
+                await _reject_unrecognized(word_id, word_text, notebook_id, context)
+                _enrich_batch_done += 1
                 continue
 
             # 后处理校验：拦截拼写错/中文例句/词性误标
             ok, reason = _enrich_post_check(word_text, phonetic, definition, example)
             if not ok:
+                if reason.startswith(("word 不在英语词典", "词组中分词拼写错")):
+                    await _reject_unrecognized(word_id, word_text, notebook_id, context)
+                    _enrich_batch_done += 1
+                    continue
                 _enrich_jobs[word_id] = {"status": "failed", "error": reason}
                 logger.warning(f"[enrich-check] {word_text} — 拒绝写回: {reason}")
                 if _event_queue is not None:
@@ -1490,6 +1530,12 @@ async def _enrich_worker():
                     "word_id": word_id,
                     **written,
                 })
+        except EnrichmentUnavailable as exc:
+            _enrich_jobs[word_id] = {"status": "failed", "error": str(exc)}
+            _enrich_batch_done += 1
+            if _event_queue is not None:
+                await _event_queue.put({"type": "enrich_failed", "word_id": word_id,
+                                        "word": word_text, "reason": str(exc), "removed": False})
         except Exception as e:
             _enrich_jobs[word_id] = {"status": "failed", "error": "自动补全未完成，单词已保存，可以重试或手动编辑。"}
             # 外层保护:任何意外异常都不让 worker 死,记录后继续下一个
@@ -1497,6 +1543,7 @@ async def _enrich_worker():
             import asyncio as _aio
             await _aio.sleep(1)
         finally:
+            _new_enrichment_candidates.pop(word_id, None)
             if _enrich_jobs.get(word_id, {}).get("status") == "processing":
                 _enrich_jobs[word_id] = {"status": "idle"}
             _enriching_ids.pop(word_id, None)

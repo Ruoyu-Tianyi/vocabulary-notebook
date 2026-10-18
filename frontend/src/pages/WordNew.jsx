@@ -42,9 +42,13 @@ export default function WordNew() {
       ? { ...entry, word: { ...entry.word, ...fields }, enrichment: { status: 'ready' } } : entry))
     window.dispatchEvent(new Event('review-stats-changed'))
   }, [])
-  const handleFailed = useCallback((id, _word, reason) => {
+  const handleFailed = useCallback((id, _word, reason, result = {}) => {
     setAddedWords(previous => previous.map(entry => entry.word.id === id
-      ? { ...entry, enrichment: { status: 'failed', error: reason } } : entry))
+      ? { ...entry, enrichment: { status: result.removed ? 'removed' : 'failed', error: reason } } : entry))
+    if (result.removed) {
+      window.dispatchEvent(new Event('library-changed'))
+      window.dispatchEvent(new Event('review-stats-changed'))
+    }
   }, [])
   useSSE({ onEnriched: handleEnriched, onEnrichFailed: handleFailed })
   const hasPending = addedWords.some(entry => ['queued', 'processing'].includes(entry.enrichment?.status))
@@ -67,7 +71,7 @@ export default function WordNew() {
         if (alive) results.forEach(result => { if (result.status === 'fulfilled') updateAdded(result.value) })
       } finally { running = false }
     }
-    // Polling also recovers the result when SSE disconnects or another tab consumes an event.
+    // Polling recovers results when SSE disconnects or the initial notification was missed.
     const timer = setInterval(refresh, 2000)
     return () => { alive = false; clearInterval(timer) }
   }, [hasPending, updateAdded])
@@ -179,9 +183,9 @@ export default function WordNew() {
                       : entry.enrichment?.error || '单词已保存，释义尚未生成。'}</p>}
               {current.example && <blockquote className="added-example">{current.example}</blockquote>}
               <div className="btn-group">
-                {!current.definition && status !== 'deleted' && <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => retry(entry)}>{pending ? '生成中…' : '重试补全'}</button>}
+                {!current.definition && !['deleted', 'removed'].includes(status) && <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => retry(entry)}>{pending ? '生成中…' : '重试补全'}</button>}
                 {status === 'not_configured' && <Link className="btn btn-ghost" to="/settings">配置 API Key</Link>}
-                {status !== 'deleted' && <Link className="btn btn-ghost" to={`/word/${current.id}`}>查看 / 编辑</Link>}
+                {!['deleted', 'removed'].includes(status) && <Link className="btn btn-ghost" to={`/word/${current.id}`}>查看 / 编辑</Link>}
               </div>
             </article>
           })}

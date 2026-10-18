@@ -54,7 +54,7 @@ export function useSSE({ onEnriched, onEnrichFailed, onDisconnect }) {
                       example: event.example,
                     })
                   } else if (event.type === 'enrich_failed') {
-                    onEnrichFailedRef.current?.(event.word_id, event.word, event.reason)
+                    onEnrichFailedRef.current?.(event.word_id, event.word, event.reason, { removed: event.removed === true })
                   }
                 } catch {
                   // 忽略解析失败的行
