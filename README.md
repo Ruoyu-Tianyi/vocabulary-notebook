@@ -4,6 +4,8 @@
 
 基于 **[Eric Zhou 的 Vocabulary Notebook](https://github.com/Eric-Zhou-0302/vocabulary-notebook)** 开发，保留原项目提交历史与 MIT 版权声明。原项目提供 FastAPI、React、AI 补全、FSRS 复习及导出；本项目扩展云同步、多单词本、逐次复习记录与冲突合并。[来源说明](NOTICE) · [原 README](docs/UPSTREAM_README.md) · [MIT License](LICENSE)
 
+当前维护仓库为 **[Ruoyu-Tianyi/vocabulary-notebook](https://github.com/Ruoyu-Tianyi/vocabulary-notebook)**，它是原项目的 fork。`main` 提供完整云端版本；向原作者贡献的功能使用从原项目建立的独立分支。旧仓库 [drive-vocabulary-book](https://github.com/Ruoyu-Tianyi/drive-vocabulary-book) 保留历史并提示迁移。迁移只改变程序更新来源，沿用原来的安装目录、Drive 文件夹、词库、学习记录及本机密钥。
+
 ## Agent 安装提示词
 
 在另一台电脑把下面整段复制给可操作本机的 Agent 即可。常规安装直接使用仓库附带的前端，无需 Node.js、Ollama 或模型文件。API Key 在该电脑的设置页输入。
@@ -11,7 +13,7 @@
 ```text
 请在这台私人电脑上直接安装并配置“云端词汇本”，将这台电脑作为我的日常主力机。
 
-GitHub 仓库：https://github.com/Ruoyu-Tianyi/drive-vocabulary-book
+GitHub 仓库：https://github.com/Ruoyu-Tianyi/vocabulary-notebook
 请先读取最新 README 和适用的 AGENTS.md，然后实际执行安装，不要只给我步骤。
 
 1. 检查操作系统、Git 和 Python 3.10+。缺少时通过官方渠道安装；遇到系统权限、登录或安装条款时说明需要我完成的具体步骤。Windows 默认使用 D:\000_Workspace\云端词汇本；D 盘不可用则使用用户 Documents 下的 drive-vocabulary-book。本程序放在本地非同步目录。
@@ -31,14 +33,14 @@ GitHub 仓库：https://github.com/Ruoyu-Tianyi/drive-vocabulary-book
 ```text
 请直接更新这台电脑上已经在使用的“云端词汇本”，获取新功能并保留我的全部单词本、词汇、逐次评分、FSRS 进度、删除记录、API Key 和 Drive 连接。
 
-仓库：https://github.com/Ruoyu-Tianyi/drive-vocabulary-book
+仓库：https://github.com/Ruoyu-Tianyi/vocabulary-notebook
 目标：更新现有安装到 origin/main，不重新创建词库，不将另一台电脑的数据文件整份覆盖到本机。
 
-1. 找到现有安装目录、应用启动方式、VOCAB_DATA_FILE（若设置）、config.json 和 sync.credentials_dir（默认 .secrets）。读取 README、适用的 AGENTS.md、Git 状态与当前提交，确认 origin 指向上述仓库。保留现有用户环境变量，不回显任何 API Key 或令牌。
+1. 找到现有安装目录、应用启动方式、VOCAB_DATA_FILE（若设置）、config.json 和 sync.credentials_dir（默认 .secrets）。读取 README、适用的 AGENTS.md、Git 状态与当前提交，检查 origin。若仍指向旧仓库 Ruoyu-Tianyi/drive-vocabulary-book，先记录旧地址并保留为 legacy 远程，再把 origin 切换到上述 fork；如果 legacy 已存在则先检查其地址，不覆盖其他远程。其他不明来源不要擅自替换。保留现有用户环境变量，不回显任何 API Key 或令牌。
 2. 若应用正在运行，先通过本机页面完成一次同步，记录状态及词库/学习记录数量。文件夹模式还要确认 Google Drive 桌面版上传完成。离线时必须保留所有未同步变更，在报告里说明，不能清空缓存或待同步记录。
 3. 只停止这个安装目录对应的词汇本进程，保留其他程序。先创建升级前本地备份：已有 maintenance.py 时，使用项目 .venv 中的 Python 执行 maintenance.py backup，记录返回的备份路径与旧提交。工具会备份词库及其已有备份、config.json、完整的本机凭据目录，并验证复制结果。备份包含密钥，不能上传到 Drive、GitHub 或聊天。
 4. 如果旧版本没有 maintenance.py，则在项目外新建本地时间戳备份目录，用文件复制保存上述数据、配置及凭据，并记录每个源文件的 SHA-256、原路径、旧提交和词库/评分数量。保留备份直到更新验收结束。不能先更新再把新状态当作升级前备份。
-5. 获取远程代码后，用 git pull --ff-only origin main 更新现有工作区。存在未提交修改、分支分叉或冲突时，保留现场并说明冲突，不强制重置、不清理未跟踪文件，也不覆盖 config.json、words.json、.secrets、.backups 或云端变更文件。
+5. 获取远程代码并确认现有提交是 origin/main 的祖先后，用 git pull --ff-only origin main 更新现有工作区，设置 main 跟踪新的 origin/main。存在未提交修改、分支分叉或冲突时，保留现场并说明冲突，不强制重置、不清理未跟踪文件，也不覆盖 config.json、words.json、.secrets、.backups 或云端变更文件。旧仓库迁移同样走这个流程，不另行克隆覆盖现有安装。
 6. 使用原 .venv 安装 requirements.txt，使用仓库附带的 frontend/dist。前端只有在修改源码或构建产物缺失时才安装开发依赖并重新构建。保留本机 DeepSeek 模型设置、Key 与原 Drive 目录，不复制示例配置覆盖真实配置。
 7. 启动前先校验：已有工具备份使用 maintenance.py verify --backup <第 3 步返回的本地路径>；手动备份则比较第 4 步所有原文件的 SHA-256 和词库统计。发现文件丢失、变化或版本不兼容时停止启动，保留新旧文件供检查。不要静默恢复快照覆盖可能更新过的数据。
 8. 用原启动方式重启并刷新浏览器，确认原单词本与学习记录可读取、DeepSeek 设置保留、Drive 仍连接原目录。检查“添加后即时释义”和“添加时间：最新在前”选项。常规升级不需要新建测试词或发送收费 AI 请求；如确需生成测试，先使用我指定的一个词。
@@ -77,8 +79,8 @@ git pull --ff-only origin main
 安装 [Python 3.10+](https://www.python.org/downloads/)，然后：
 
 ```powershell
-git clone https://github.com/Ruoyu-Tianyi/drive-vocabulary-book.git
-cd drive-vocabulary-book
+git clone https://github.com/Ruoyu-Tianyi/vocabulary-notebook.git
+cd vocabulary-notebook
 .\start.bat
 ```
 
