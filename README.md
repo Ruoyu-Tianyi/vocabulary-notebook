@@ -1,5 +1,9 @@
 # 云端词汇本 · Drive Vocabulary Book
 
+> **已迁移：请使用 [Ruoyu-Tianyi/vocabulary-notebook](https://github.com/Ruoyu-Tianyi/vocabulary-notebook)。** 完整功能及后续更新在新 fork 的 `main` 分支维护，原项目历史和我们的开发提交均保留。本仓库保留旧版本与迁移说明，不再作为安装、更新来源。
+>
+> 新电脑请复制新仓库的 **[Agent 安装提示词](https://github.com/Ruoyu-Tianyi/vocabulary-notebook#agent-安装提示词)**；已安装的电脑请复制 **[Agent 更新提示词](https://github.com/Ruoyu-Tianyi/vocabulary-notebook#agent-更新提示词)**，让 Agent 备份并切换现有安装的更新来源。沿用原安装目录、Drive 文件夹和本机配置，不需要重新建词库、复制另一台电脑的缓存或重新输入已有 Key。不要继续执行下方旧版本的安装、更新命令；下方内容仅为迁移前版本的历史说明。
+
 **本机运行词汇本，DeepSeek API 补全，Google Drive 同步词汇与学习记录。** 支持将新电脑作为日常主力、旧电脑作为备用，按法律、金融等课程创建独立单词本。
 
 基于 **[Eric Zhou 的 Vocabulary Notebook](https://github.com/Eric-Zhou-0302/vocabulary-notebook)** 开发，保留原项目提交历史与 MIT 版权声明。原项目提供 FastAPI、React、AI 补全、FSRS 复习及导出；本项目扩展云同步、多单词本、逐次复习记录与冲突合并。[来源说明](NOTICE) · [原 README](docs/UPSTREAM_README.md) · [MIT License](LICENSE)
