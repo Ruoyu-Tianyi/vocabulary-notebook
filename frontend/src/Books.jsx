@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useEffect, useState } from 'react'
+import { createContext, useContext, useCallback, useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { activeNotebookId, libraryRequest } from './api'
 
@@ -44,8 +44,17 @@ export function BookPicker() {
   const [description, setDescription] = useState('')
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
+  const actionsRef = useRef(null)
+  useEffect(() => {
+    function closeActions(event) {
+      if (actionsRef.current && !actionsRef.current.contains(event.target)) actionsRef.current.open = false
+    }
+    document.addEventListener('pointerdown', closeActions)
+    return () => document.removeEventListener('pointerdown', closeActions)
+  }, [])
   const current = books.find(book => book.id === active)
   function open(book) {
+    if (actionsRef.current) actionsRef.current.open = false
     setEditing(book || {})
     setName(book?.name || '')
     setDescription(book?.description || '')
@@ -65,7 +74,7 @@ export function BookPicker() {
     finally { setSaving(false) }
   }
   return <>
-    <section className="book-toolbar" aria-label="单词本管理">
+    <div className="book-toolbar">
       <div className="book-choice">
         <label htmlFor="active-book">当前单词本</label>
         <select id="active-book" value={active} onChange={event => { select(event.target.value); navigate('/') }}>
@@ -73,12 +82,18 @@ export function BookPicker() {
           {books.map(book => <option key={book.id} value={book.id}>{book.name} · {book.word_count}</option>)}
         </select>
       </div>
-      <div className="btn-group">
-        <button className="btn btn-secondary" onClick={() => open(null)}>＋ 新建单词本</button>
-        {current && <button className="btn btn-ghost" onClick={() => open(current)}>编辑单词本</button>}
-      </div>
-      {(current?.description || error) && <p className="book-description">{error || current.description}</p>}
-    </section>
+      <details className="book-actions" ref={actionsRef} onKeyDown={event => {
+        if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus() }
+      }}>
+        <summary aria-label="单词本管理">管理</summary>
+        <div className="book-actions-menu">
+          {current?.description && <p className="book-description">{current.description}</p>}
+          <button type="button" onClick={() => open(null)}>＋ 新建单词本</button>
+          {current && <button type="button" onClick={() => open(current)}>编辑当前单词本</button>}
+        </div>
+      </details>
+      {error && <p className="book-description settings-error" role="alert">{error}</p>}
+    </div>
     {editing && <div className="book-overlay" onKeyDown={event => { if (event.key === 'Escape' && !saving) setEditing(null) }}>
       <section className="book-dialog" role="dialog" aria-modal="true" aria-labelledby="book-dialog-title">
         <h2 id="book-dialog-title">{editing.id ? '编辑单词本' : '新建单词本'}</h2>

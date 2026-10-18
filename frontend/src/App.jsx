@@ -28,31 +28,40 @@ export default function App() {
   const toggleHelp = useCallback(() => setHelpOpen(o => !o), [])
 
   useGlobalShortcuts({ searchInputRef, toggleHelp })
+  const listActive = location.pathname === '/' || (location.pathname.startsWith('/word/') && location.pathname !== '/word/new')
 
   return (
     <div className="app">
       <header className="app-header">
-        <div>
+        <div className="app-brand">
           <h1 className="app-title">
             <Link to="/">云端词汇本</Link>
           </h1>
-          <ModelStatus />
+          <p className="app-tagline">记录新词，积累知识。</p>
         </div>
-        <nav className="app-nav">
-          <Link to="/" className={location.pathname === '/' ? 'active' : ''}>
-            单词列表
-          </Link>
-          <Link to="/review" className={location.pathname === '/review' ? 'active' : ''}>
-            复习 {dueCount > 0 && <span className="nav-badge">· {dueCount}</span>}
-          </Link>
-          <Link to="/word/new" className={location.pathname === '/word/new' ? 'active' : ''}>
-            添加单词
-          </Link>
+        <div className="app-utilities">
+          <Link to="/settings" aria-current={location.pathname === '/settings' ? 'page' : undefined}>同步与备份</Link>
           <ThemeToggle />
-        </nav>
+        </div>
       </header>
-      <CloudStatus />
-      <BookPicker />
+      <nav className="app-nav" aria-label="主要功能">
+          <Link to="/" className={listActive ? 'active' : ''} aria-current={listActive ? 'page' : undefined}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
+            <span>单词列表</span>
+          </Link>
+          <Link to="/word/new" className={location.pathname === '/word/new' ? 'active' : ''} aria-current={location.pathname === '/word/new' ? 'page' : undefined}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M12 7v10M7 12h10" /></svg>
+            <span>添加单词</span>
+          </Link>
+          <Link to="/review" className={location.pathname === '/review' ? 'active' : ''} aria-current={location.pathname === '/review' ? 'page' : undefined}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M4 10a8 8 0 1 1 1 7M4 4v6h6" /><path d="M12 7v5l3 2" /></svg>
+            <span>复习</span> {dueCount > 0 && <span className="nav-badge" aria-label={`${dueCount} 个单词待复习`}>{dueCount}</span>}
+          </Link>
+      </nav>
+      <div className="library-statusbar" role="group" aria-label="当前单词本与连接状态">
+        <BookPicker />
+        <div className="status-services"><ModelStatus /><CloudStatus /></div>
+      </div>
       <main className="app-main">
         <Routes key={location.pathname === '/settings' ? 'settings' : location.pathname === '/word/new' ? `add:${active}` : `${active}:${cloudVersion}`}>
           <Route path="/" element={<WordList searchInputRef={searchInputRef} />} />

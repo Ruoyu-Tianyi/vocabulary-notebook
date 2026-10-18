@@ -20,7 +20,6 @@ function useProviderLabel() {
 
 export default function WordNew() {
   const [word, setWord] = useState('')
-  const [definition, setDefinition] = useState('')
   const { books, active } = useBooks()
   const [bookId, setBookId] = useState(active || 'default')
   const [loading, setLoading] = useState(false)
@@ -83,13 +82,11 @@ export default function WordNew() {
     e.preventDefault()
     if (!word.trim()) return
     const submitted = word.trim()
-    const submittedDefinition = definition
     setLoading(true)
     try {
-      const result = await createWord(submitted, submittedDefinition, bookId)
+      const result = await createWord(submitted, '', bookId)
       setAddedWords(previous => [result, ...previous].slice(0, 10))
       setWord(current => current.trim() === submitted ? '' : current)
-      setDefinition(current => current === submittedDefinition ? '' : current)
       inputRef.current?.focus()
       window.dispatchEvent(new Event('library-changed'))
       window.dispatchEvent(new Event('review-stats-changed'))
@@ -137,8 +134,6 @@ export default function WordNew() {
             autoFocus
           />
         </div>
-        <div className="form-group"><label htmlFor="new-definition">课程释义（可选）</label>
-          <textarea id="new-definition" rows={3} value={definition} onChange={e => setDefinition(e.target.value)} placeholder="粘贴课堂定义；留空由 DeepSeek API 补全" /></div>
         <div className="btn-group">
           <button type="submit" className="btn btn-primary" disabled={loading}>
             {loading ? '保存中…' : '保存'}
@@ -148,7 +143,7 @@ export default function WordNew() {
           </button>
         </div>
         <p style={{ marginTop: 14, fontSize: 12, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-          Enter 保存 · Esc 返回 · 留空释义由 {providerLabel} API 补充；离线也能保存
+          Enter 保存 · Esc 返回 · 释义由 {providerLabel} API 补充，生成后显示在下方；离线也能保存
         </p>
       </form>
       {addedWords.length > 0 && <section className="added-words" aria-labelledby="added-words-heading">
