@@ -72,7 +72,7 @@ GitHub 仓库：https://github.com/Ruoyu-Tianyi/vocabulary-notebook
 3. 创建项目独立 .venv 并安装 requirements.txt。使用已包含的 frontend/dist，常规安装无需 Node.js。此版本使用 DeepSeek API，不安装 Ollama 或下载模型。
 4. 检查是否已有 DEEPSEEK_API_KEY。没有时先启动应用，引导我在“同步与备份 → DeepSeek API 词汇补全”中自己输入 Key；不要让我把 Key 贴到聊天、命令行参数或仓库。默认模型 deepseek-flash，可按我的账号可用模型调整。Key 只留本机，各电脑分别配置，不复制另一台的 .secrets 或令牌。
 5. 检测 Google Drive 桌面版，未安装时从 Google 官方渠道安装并引导我登录；系统不支持桌面版时，说明情况并参考 README 的 Drive API 方案。找到同一 Google 账号已有的“我的云端硬盘/Drive Vocabulary Book”文件夹，等待完整下载并设为可离线使用，然后通过设置页连接它在本机的绝对路径。不同电脑的盘符可以不同。不要另建同名空词库，不要覆盖或清空云端 library.json / vocabulary-*.json。如果尚未登录、授权或尚未出现已有文件夹，只暂停这项并告诉我需要完成的步骤，继续其他安装工作。
-6. 启动词汇本，访问 http://127.0.0.1:1400，确认已有“法律英语”“金融英语”等单词本从云端恢复。同步采用双向合并，新电脑作为主力不需要清空或禁用旧电脑。保留两台各自的 words.json 本地缓存。
+6. Windows 在安装目录运行 install-desktop-shortcut.ps1 创建“云端词汇本”桌面快捷方式，再运行 VocabularyBook.exe 一键启动；其他系统使用原方式。访问 http://127.0.0.1:1400，确认已有“法律英语”“金融英语”等单词本从云端恢复。同步采用双向合并，新电脑作为主力不需要清空或禁用旧电脑。保留两台各自的 words.json 本地缓存。
 7. 检查 /api/health、/api/sync/status 和浏览器错误。Key 未配置时应标记为待配置，仍能手动保存和同步。连接检测不发送收费的生成请求；需要测试真实词汇补全时，使用我指定的一个词验证，保留我的正式词汇与学习进度。没有 Key 时不要声称真实 DeepSeek 调用已通过。
 8. 完成后告诉我本机安装目录、启动方式、Drive 路径、当前 AI 配置状态、检查结果及任何仍需我处理的事项。默认无需创建远程部署、开机自启或推送任何个人数据。
 ```
@@ -85,7 +85,7 @@ GitHub 仓库：https://github.com/Ruoyu-Tianyi/vocabulary-notebook
 
 ```text
 请直接更新本机已安装的“云端词汇本”：https://github.com/Ruoyu-Tianyi/vocabulary-notebook
-读取最新 README 的更新约定，在原安装目录执行：完成同步 → 只停止本项目进程 → 用 maintenance.py backup 创建本地备份 → 检查 Git 状态并快进更新到 origin/main → 按需更新原虚拟环境依赖，使用附带 frontend/dist → 启动前运行 maintenance.py verify --backup <实际备份路径> → 原方式重启并检查词库、复习进度、API 和 Drive 状态。
+读取最新 README 的更新约定，在原安装目录执行：完成同步 → 安全停止本项目（Windows 启动器可用 --stop，等待其退出）→ 用 maintenance.py backup 创建本地备份 → 检查 Git 状态并快进更新到 origin/main → 按需更新原虚拟环境依赖，使用附带 frontend/dist → 启动前运行 maintenance.py verify --backup <实际备份路径> → Windows 创建或更新桌面快捷方式，用 VocabularyBook.exe 重启；其他系统用原方式，并检查词库、复习进度、API 和 Drive 状态。
 沿用现有单词本、学习记录、配置、环境变量及密钥，不重新配置 Drive/API、不清空或覆盖数据、不调用收费生成。若旧仓库地址、未提交修改、冲突或校验失败，按 README 完整流程保留现场处理，不强制重置。正常完成后只汇报旧/新提交、备份位置和检查结果。
 ```
 
@@ -101,12 +101,12 @@ GitHub 仓库：https://github.com/Ruoyu-Tianyi/vocabulary-notebook
 
 1. 找到现有安装目录、应用启动方式、VOCAB_DATA_FILE（若设置）、config.json 和 sync.credentials_dir（默认 .secrets）。读取 README、适用的 AGENTS.md、Git 状态与当前提交，检查 origin。若仍指向旧仓库 Ruoyu-Tianyi/drive-vocabulary-book，先记录旧地址并保留为 legacy 远程，再把 origin 切换到上述 fork；如果 legacy 已存在则先检查其地址，不覆盖其他远程。其他不明来源不要擅自替换。保留现有用户环境变量，不回显任何 API Key 或令牌。
 2. 若应用正在运行，先通过本机页面完成一次同步，记录状态及词库/学习记录数量。文件夹模式还要确认 Google Drive 桌面版上传完成。离线时必须保留所有未同步变更，在报告里说明，不能清空缓存或待同步记录。
-3. 只停止这个安装目录对应的词汇本进程，保留其他程序。先创建升级前本地备份：已有 maintenance.py 时，使用项目 .venv 中的 Python 执行 maintenance.py backup，记录返回的备份路径与旧提交。工具会备份词库及其已有备份、config.json、完整的本机凭据目录，并验证复制结果。备份包含密钥，不能上传到 Drive、GitHub 或聊天。
+3. 只停止这个安装目录对应的词汇本进程，保留其他程序。Windows 托盘启动器使用 Start-Process .\VocabularyBook.exe -ArgumentList '--stop' -Wait -PassThru -WindowStyle Hidden 并检查退出码为 0，等服务及托盘关闭后再备份；旧启动方式仅停止本项目原启动进程。先创建升级前本地备份：已有 maintenance.py 时，使用项目 .venv 中的 Python 执行 maintenance.py backup，记录返回的备份路径与旧提交。工具会备份词库及其已有备份、config.json、完整的本机凭据目录，并验证复制结果。备份包含密钥，不能上传到 Drive、GitHub 或聊天。
 4. 如果旧版本没有 maintenance.py，则在项目外新建本地时间戳备份目录，用文件复制保存上述数据、配置及凭据，并记录每个源文件的 SHA-256、原路径、旧提交和词库/评分数量。保留备份直到更新验收结束。不能先更新再把新状态当作升级前备份。
 5. 获取远程代码并确认现有提交是 origin/main 的祖先后，用 git pull --ff-only origin main 更新现有工作区，设置 main 跟踪新的 origin/main。存在未提交修改、分支分叉或冲突时，保留现场并说明冲突，不强制重置、不清理未跟踪文件，也不覆盖 config.json、words.json、.secrets、.backups 或云端变更文件。旧仓库迁移同样走这个流程，不另行克隆覆盖现有安装。
 6. 使用原 .venv 安装 requirements.txt，使用仓库附带的 frontend/dist。前端只有在修改源码或构建产物缺失时才安装开发依赖并重新构建。保留本机 DeepSeek 模型设置、Key 与原 Drive 目录，不复制示例配置覆盖真实配置。
 7. 启动前先校验：已有工具备份使用 maintenance.py verify --backup <第 3 步返回的本地路径>；手动备份则比较第 4 步所有原文件的 SHA-256 和词库统计。发现文件丢失、变化或版本不兼容时停止启动，保留新旧文件供检查。不要静默恢复快照覆盖可能更新过的数据。
-8. 用原启动方式重启并刷新浏览器，确认原单词本与学习记录可读取、DeepSeek 设置保留、Drive 仍连接原目录。检查“添加后即时释义”和“添加时间：最新在前”选项。常规升级不需要新建测试词或发送收费 AI 请求；如确需生成测试，先使用我指定的一个词。
+8. Windows 运行 install-desktop-shortcut.ps1，创建或更新指向当前目录的桌面快捷方式，再用 VocabularyBook.exe 一键启动；其他系统用原启动方式。刷新浏览器，确认原单词本与学习记录可读取、DeepSeek 设置保留、Drive 仍连接原目录。检查“添加后即时释义”和“添加时间：最新在前”选项。常规升级不需要新建测试词或发送收费 AI 请求；如确需生成测试，先使用我指定的一个词。
 9. 继续同步并检查结果；正常云端合并可能带来其他电脑的新词、评分或删除，不要因数量变化而用旧快照回灌云端。若失败，保留备份、日志和新旧提交，说明失败环节；必要时回退程序版本，恢复数据前先确认不会覆盖更新后的记录。
 10. 汇报旧/新提交、备份路径、文件一致性检查、原词库与学习记录检查、AI/同步状态和未解决事项。两台电脑各自更新程序即可继续同步，不需要重新授权已有 Drive 文件夹。
 ```
@@ -124,6 +124,28 @@ git pull --ff-only origin main
 ```
 
 `verify` 的路径使用 `backup` 实际返回值。macOS / Linux 换成 `.venv/bin/python`。备份默认在本机 `.backups/`，包含私密配置，已加入 Git 忽略；工具拒绝对正在使用的缓存进行备份或校验。它检查备份与原文件的 SHA-256，并比对词汇、单词本、评分事件和 FSRS 统计；不会自动恢复文件、请求 AI 或写入云端。校验应在应用重新启动前执行。
+
+## Windows 一键启动
+
+完成安装后，双击桌面的 **云端词汇本** 图标，或安装目录中的 **VocabularyBook.exe**。启动器自动启动本机服务并打开浏览器，不显示命令窗口；重复点击会打开已有词汇本，不重复启动服务。图标为本项目设计的金色书页、云朵和绿色圆点。
+
+- 运行时在右下角系统托盘驻留。双击托盘图标重新打开页面；右键选择“安全停止词汇本并退出”时，会等待保存和同步任务退出。
+- 关闭浏览器页面不会停止服务。选择“仅退出启动器”也会保留服务，之后仍可重新打开启动器管理。
+- 桌面快捷方式缺失时，双击安装目录中的 `create-desktop-shortcut.bat`；Agent 也可运行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\install-desktop-shortcut.ps1`。它指向当前安装目录，无需管理员权限，不设置开机自启。
+- 不要把 exe 单独移出项目目录；可以把桌面快捷方式固定到开始菜单或任务栏。另一台电脑更新后，在它自己的安装目录创建快捷方式，沿用各自的数据与配置。
+- 如果以前通过 `start.bat` / `app.py` 启动，启动器可以打开已有页面；需要停止时仍关闭原启动窗口，再用图标启动即可由托盘管理。
+
+启动日志在本机 `.runtime/service.log`，不进入 Git 或 Drive。程序只连接本机 `127.0.0.1:1400`，会核对安装目录身份；如果端口被其他程序或另一份安装占用，会提示检查，不终止其他程序。现有 `start.bat` / `start.ps1` 继续可用。
+
+维护更新时先完成同步，再等待启动器停止，之后使用原有备份、快进更新和校验流程：
+
+```powershell
+$stopped = Start-Process .\VocabularyBook.exe -ArgumentList '--stop' -Wait -PassThru -WindowStyle Hidden
+if ($stopped.ExitCode -ne 0) { throw '词汇本尚未安全停止，请先检查原启动窗口。' }
+# 然后执行下方更新工具的 backup / pull / verify。
+```
+
+开发者可运行 `tools/windows/build-launcher.ps1`，用 Windows 自带的 .NET Framework 编译器重建启动器与图标。源码位于 `tools/windows/Launcher.cs`、`desktop_service.py`，图标含 SVG、PNG 和多尺寸 ICO。日常使用不需要编译或安装 Node.js。
 
 ## Windows 快速启动
 

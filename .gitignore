@@ -16,3 +16,4 @@ words.json.*
 frontend/pnpm-lock.yaml
 .venv-*/
 .backups/
+.runtime/

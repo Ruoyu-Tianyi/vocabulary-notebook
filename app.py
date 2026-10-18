@@ -2,6 +2,7 @@
 import asyncio
 import csv
 import html as html_mod
+import hashlib
 import io
 import ipaddress
 import math
@@ -755,6 +756,13 @@ Reply ONLY with a JSON object, no other text:
 
 
 # ─── API: SSE 事件流 ──────────────────────────────────────
+
+@app.get("/api/instance")
+def desktop_instance():
+    root = str(Path(__file__).resolve().parent).rstrip("\\/").replace("\\", "/").lower()
+    return {"application": "drive-vocabulary-book",
+            "installation_id": hashlib.sha256(root.encode("utf-8")).hexdigest()}
+
 
 @app.get("/api/events")
 async def event_stream(request: Request):
