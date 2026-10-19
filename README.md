@@ -6,7 +6,7 @@
 
 当前维护仓库为 **[Ruoyu-Tianyi/vocabulary-notebook](https://github.com/Ruoyu-Tianyi/vocabulary-notebook)**，它是原项目的 fork。`main` 提供完整云端版本；向原作者贡献的功能使用从原项目建立的独立分支。旧仓库 [drive-vocabulary-book](https://github.com/Ruoyu-Tianyi/drive-vocabulary-book) 保留历史并提示迁移。迁移只改变程序更新来源，沿用原来的安装目录、Drive 文件夹、词库、学习记录及本机密钥。
 
-近期更新已按五组整理向上游贡献，见 [PR 与审核记录](docs/CONTRIBUTIONS.md)。日常安装和更新仍使用本仓库的 `main`。
+即时记忆与安全输入已获上游采纳；其余更新进一步拆成六个独立 PR，见 [PR 与审核记录](docs/CONTRIBUTIONS.md)。日常安装和更新仍使用本仓库的 `main`。
 
 ## 能做什么
 

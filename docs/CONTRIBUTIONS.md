@@ -1,5 +1,7 @@
 # 上游贡献与审核记录
 
+**2026-10-19 更新：#1 已合并；其余内容已修复 v1.1.0 冲突并拆为六个独立 PR，见 [最新拆分与验证记录](CONTRIBUTIONS_20261019.md)。以下保留 2026-10-18 的历史审核快照。**
+
 完整版本继续维护在 [Ruoyu-Tianyi/vocabulary-notebook](https://github.com/Ruoyu-Tianyi/vocabulary-notebook) 的 main，保留来源历史、MIT 版权及原项目说明。以下 PR 提给 [Eric-Zhou-0302/vocabulary-notebook](https://github.com/Eric-Zhou-0302/vocabulary-notebook)，按功能分别审核，不需要用户切换到贡献分支安装。
 
 | PR | 范围 | Python 3.9.6 | Python 3.12.14 |
