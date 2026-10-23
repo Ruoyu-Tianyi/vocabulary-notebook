@@ -152,9 +152,10 @@ export default function WordList() {
       <div className="toolbar">
         <input
           type="text"
-          placeholder="搜索单词或释义…"
+          placeholder="搜索英文单词或中文译文，如：合同…"
+          aria-label="搜索英文单词或中文译文"
           value={q}
-          onChange={e => { setQ(e.target.value); setPage(1) }}
+          onChange={e => { setQ(e.target.value); setLetter(''); setPage(1) }}
         />
         <select value={date} onChange={e => { setDate(e.target.value); setPage(1) }}>
           <option value="">全部日期</option>

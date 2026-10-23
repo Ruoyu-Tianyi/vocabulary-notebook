@@ -1,5 +1,6 @@
 """词汇笔记本 — FastAPI 后端"""
 import asyncio
+import unicodedata
 import csv
 import html as html_mod
 import hashlib
@@ -1646,9 +1647,12 @@ def _filter_words(data: dict, q: str, date: str, sort: str = "", letter: str = "
     words = data["words"]
     if date:
         words = [w for w in words if w["created_at"].startswith(date)]
-    if q:
-        ql = q.lower()
-        words = [w for w in words if ql in w["word"].lower() or ql in w["definition"].lower()]
+    query = unicodedata.normalize("NFKC", q).strip().casefold()
+    if query:
+        words = [w for w in words if any(
+            query in unicodedata.normalize("NFKC", w.get(field) or "").casefold()
+            for field in ("word", "definition")
+        )]
     if letter:
         l = letter.lower()
         words = [w for w in words if w["word"].lower().startswith(l)]
