@@ -99,7 +99,6 @@ def dry_run(template: str):
 
 async def live_test():
     """实际调 deepseek,验证 def 是否符合预期"""
-    import app
     print("=" * 70)
     print("LIVE TEST: 调 deepseek 跑,验证 def 内容")
     print("=" * 70)
@@ -155,16 +154,14 @@ if __name__ == "__main__":
     args = p.parse_args()
 
     if args.case:
-        TEST_CASES = [c for c in TEST_CASES if c[0] == args.case]
+        TEST_CASES = [c for c in TEST_CASES if args.case in (c[0], c[1])]
         if not TEST_CASES:
             print(f"未找到 case '{args.case}'")
             sys.exit(1)
 
     if args.live:
-        import app
         asyncio.run(live_test())
     else:
-        import app
         template = extract_prompt_template()
         dry_run(template)
 
@@ -173,7 +170,6 @@ if __name__ == "__main__":
 
 def test_prompt_template_extractable():
     """prompt 模板能从 enrich_word 函数体里 regex 出来"""
-    import app
     template = extract_prompt_template()
     assert len(template) > 500, f"prompt 模板太短: {len(template)} 字符"
     # 关键约束句必须存在
@@ -188,7 +184,6 @@ def test_prompt_template_extractable():
 
 def test_prompt_renders_for_each_case():
     """每个 test case 都能正常渲染 prompt(不抛异常)"""
-    import app
     template = extract_prompt_template()
     for name, word, _, _ in TEST_CASES:
         rendered = render_prompt(template, word)
@@ -198,7 +193,6 @@ def test_prompt_renders_for_each_case():
 
 def test_known_constraints_present():
     """核心约束关键词都在 prompt 里(防回退)"""
-    import app
     template = extract_prompt_template()
     # CRITICAL 段必须存在
     assert "CRITICAL" in template

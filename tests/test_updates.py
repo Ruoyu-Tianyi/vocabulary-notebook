@@ -108,7 +108,7 @@ def test_time_sorting_respects_timezones_pagination_and_exports(tmp_path, monkey
 def test_new_word_immediate_definition_and_missing_key_status(tmp_path, monkeypatch):
     monkeypatch.setattr(app, "DATA_FILE", tmp_path / "words.json")
     monkeypatch.setattr(app.config, "get_ai_settings", lambda: {"configured": False})
-    monkeypatch.setattr(app, "_enrich_jobs", {})
+    monkeypatch.setattr(app, "_enrich_states", {})
     client = TestClient(app.app)
     manual = client.post("/api/words", json={"word": "contract", "definition": "n. 合同"}).json()
     assert manual["word"]["definition"] == "n. 合同" and manual["enrichment"]["status"] == "ready"
@@ -121,7 +121,7 @@ def test_new_word_immediate_definition_and_missing_key_status(tmp_path, monkeypa
 
 def test_worker_result_is_available_without_sse_and_retry_is_deduplicated(tmp_path, monkeypatch):
     monkeypatch.setattr(app, "DATA_FILE", tmp_path / "words.json")
-    monkeypatch.setattr(app, "_enrich_jobs", {})
+    monkeypatch.setattr(app, "_enrich_states", {})
     monkeypatch.setattr(app, "_enriching_ids", {})
     monkeypatch.setattr(app.config, "get_ai_settings", lambda: {"configured": True})
     calls = []

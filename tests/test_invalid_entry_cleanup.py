@@ -12,7 +12,7 @@ import sync_storage as storage
 def isolated(tmp_path, monkeypatch):
     monkeypatch.setattr(app, 'DATA_FILE', tmp_path / 'words.json')
     monkeypatch.setattr(app, '_new_enrichment_candidates', {})
-    monkeypatch.setattr(app, '_enrich_jobs', {})
+    monkeypatch.setattr(app, '_enrich_states', {})
     monkeypatch.setattr(app, '_enriching_ids', {})
     monkeypatch.setattr(app.config, 'get_ai_settings', lambda: {'configured': True})
     monkeypatch.setattr(app, '_enrich_post_check', lambda *args: (True, ''))
@@ -44,7 +44,7 @@ def test_empty_model_reply_removes_only_unchanged_new_word(isolated, monkeypatch
                 if change == 'edit-back':
                     app.update_word(word_id, {'definition': ''})
             elif change == 'move':
-                book = app.create_notebook({'name': '法律'})['notebook']['id']
+                book = app.create_notebook({'name': '法律'})['id']
                 app.update_word(word_id, {'notebook_id': book})
             elif change == 'review':
                 data = app.load_words()
@@ -59,7 +59,7 @@ def test_empty_model_reply_removes_only_unchanged_new_word(isolated, monkeypatch
             assert event['removed'] is (change == 'none')
             if change == 'none':
                 assert app.load_words()['words'] == []
-                assert app._enrich_jobs[word_id]['status'] == 'removed'
+                assert app._enrich_states[word_id]['status'] == 'removed'
                 # A stale offline device cannot restore the entry, in either merge order.
                 remote = isolated / 'second.json'
                 storage.atomic_write(remote, baseline)

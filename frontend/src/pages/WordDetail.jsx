@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { fetchWord, updateWord, deleteWord } from '../api'
-import { useBooks } from '../Books'
+import { useNotebooks } from '../useNotebooks'
 
 export default function WordDetail() {
   const { id } = useParams()
@@ -13,11 +13,14 @@ export default function WordDetail() {
   const [editWord, setEditWord] = useState('')
   const [editDef, setEditDef] = useState('')
   const [editBook, setEditBook] = useState('default')
-  const [editPhonetic, setEditPhonetic] = useState('')
-  const [editExample, setEditExample] = useState('')
-  const [saveError, setSaveError] = useState('')
+  const [editError, setEditError] = useState('')
+  const [actionError, setActionError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [syncNotice, setSyncNotice] = useState('')
-  const { books } = useBooks()
+  const { notebooks, loading: booksLoading, error: booksError, refresh: refreshBooks } = useNotebooks()
+  const editButtonRef = useRef(null)
+  const modalRef = useRef(null)
 
   useEffect(() => {
     let active = true
@@ -29,10 +32,12 @@ export default function WordDetail() {
         if (!active || current !== request) return
         setWord(data.word)
         if (fromCloud) setSyncNotice('云端内容已更新，当前未保存的编辑已保留。保存会提交编辑框中的内容。')
-      } catch {
+      } catch (requestError) {
         if (!active || current !== request) return
-        if (fromCloud) setSyncNotice('无法刷新此单词，它可能已在另一台电脑删除。当前编辑仍已保留，请先复制需要的内容。')
-        else setError('单词不存在')
+        if (fromCloud) setSyncNotice(requestError.status === 404
+          ? '此单词已不存在，可能已在另一台电脑删除。当前编辑仍已保留，请先复制需要的内容。'
+          : '暂时无法刷新此单词。当前编辑仍已保留，请检查连接后重试。')
+        else setError(requestError.status === 404 ? '单词不存在' : requestError.message || '加载失败，请检查连接后重试')
       } finally {
         if (active && current === request) setLoading(false)
       }
@@ -47,32 +52,61 @@ export default function WordDetail() {
     setEditWord(word.word)
     setEditDef(word.definition)
     setEditBook(word.notebook_id || 'default')
-    setEditPhonetic(word.phonetic || '')
-    setEditExample(word.example || '')
-    setSaveError('')
+    setEditError('')
     setEditing(true)
+  }
+
+  function closeEdit() {
+    if (saving) return
+    setEditing(false)
+    editButtonRef.current?.focus()
+  }
+
+  function handleModalKey(event) {
+    event.stopPropagation()
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      closeEdit()
+    } else if (event.key === 'Tab') {
+      const controls = modalRef.current?.querySelectorAll('input:not(:disabled), select:not(:disabled), button:not(:disabled)')
+      if (!controls?.length) return
+      const first = controls[0]
+      const last = controls[controls.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
   }
 
   async function handleEdit(e) {
     e.preventDefault()
+    if (saving || booksLoading || booksError || !notebooks.some(book => book.id === editBook)) return
+    setSaving(true)
+    setEditError('')
     try {
-      const result = await updateWord(id, { word: editWord, definition: editDef, notebook_id: editBook, phonetic: editPhonetic, example: editExample })
+      const result = await updateWord(id, { word: editWord, definition: editDef, notebook_id: editBook })
       setWord(result.word)
       setEditing(false)
       setSyncNotice('')
-      window.dispatchEvent(new Event('library-changed'))
-      window.dispatchEvent(new Event('review-stats-changed'))
-    } catch (err) { setSaveError(err.message) }
+      editButtonRef.current?.focus()
+    } catch (requestError) {
+      setEditError(requestError.message || '保存失败，请重试')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleDelete() {
-    if (!window.confirm('确认删除这个单词？')) return
+    if (deleting || !window.confirm('确认从当前单词本删除这个单词及其复习进度？其他单词本中的同词记录不受影响。')) return
+    setDeleting(true)
+    setActionError('')
     try {
       await deleteWord(id)
-      window.dispatchEvent(new Event('library-changed'))
-      window.dispatchEvent(new Event('review-stats-changed'))
-      navigate('/')
-    } catch (err) { setSaveError(err.message) }
+      navigate(`/?notebook_id=${encodeURIComponent(word.notebook_id || 'default')}`)
+    } catch (requestError) {
+      setActionError(requestError.message || '删除失败，请重试')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   if (loading) return <div className="loading">加载中…</div>
@@ -84,49 +118,58 @@ export default function WordDetail() {
   )
 
   return (
-    <div>
-      <button onClick={() => navigate(-1)} className="btn btn-ghost" style={{ marginBottom: 16 }}>← 返回</button>
+    <div className="word-detail-page">
+      <button onClick={() => navigate(-1)} className="btn btn-ghost detail-back">← 返回</button>
 
+      {syncNotice && <p role="status">{syncNotice}</p>}
+      {actionError && <p role="alert">{actionError}</p>}
       <div className="detail-card">
-        <p className="book-description">{books.find(book => book.id === word.notebook_id)?.name}</p>
-        <div className="detail-word">{word.word}</div>
+        <p className="detail-notebook">
+          <Link to={`/?notebook_id=${encodeURIComponent(word.notebook_id || 'default')}`}>{notebooks.find(book => book.id === (word.notebook_id || 'default'))?.name || '查看所属单词本'} <span aria-hidden="true">↗</span></Link>
+        </p>
+        <h2 className="detail-word">{word.word}</h2>
         {word.phonetic && <div className="detail-phonetic">{word.phonetic}</div>}
-        <div className="detail-definition">{word.definition}</div>
-        {word.example && <div className="detail-example">"{word.example}"</div>}
-        <div className="detail-date">添加于 {word.created_at.slice(0, 10)}</div>
-        {word.srs && <p className="book-description">已复习 {word.srs.reps} 次 · 下次 {new Date(word.srs.due_at).toLocaleString()}</p>}
-        {saveError && !editing && <p role="alert">{saveError}</p>}
+        <section className="detail-section" aria-label="释义">
+          <h3>释义</h3>
+          <div className="detail-definition">{word.definition || '释义待补全'}</div>
+        </section>
+        {word.example && <section className="detail-section" aria-label="例句"><h3>例句</h3><p className="detail-example">{word.example}</p></section>}
 
+        <footer className="detail-footer">
+        <div className="detail-date">添加于 {word.created_at.slice(0, 10)}</div>
         <div className="btn-group">
-          <button className="btn btn-primary" onClick={startEdit}>编辑</button>
-          <button className="btn btn-danger" onClick={handleDelete}>删除</button>
+          <button ref={editButtonRef} className="btn btn-primary" onClick={startEdit} disabled={deleting}>编辑</button>
+          <button className="btn btn-danger" onClick={handleDelete} disabled={deleting}>{deleting ? '删除中…' : '删除'}</button>
         </div>
+        </footer>
       </div>
 
       {editing && (
-        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setEditing(false) }}>
-          <div className="modal" role="dialog" aria-modal="true" aria-label="编辑单词">
-            <h2>编辑单词</h2>
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) closeEdit() }}>
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="edit-word-heading" ref={modalRef} onKeyDown={handleModalKey}>
+            <h2 id="edit-word-heading">编辑单词</h2>
             <form onSubmit={handleEdit}>
-              <div className="form-group"><label htmlFor="edit-book">单词本</label>
-                <select id="edit-book" value={editBook} onChange={e => setEditBook(e.target.value)}>
-                  {books.map(book => <option key={book.id} value={book.id}>{book.name}</option>)}
-                </select></div>
               <div className="form-group">
                 <label htmlFor="edit-word">单词</label>
-                <input id="edit-word" maxLength={200} required type="text" value={editWord} onChange={e => setEditWord(e.target.value)} />
+                <input id="edit-word" type="text" value={editWord} onChange={e => setEditWord(e.target.value)} autoFocus required disabled={saving} />
               </div>
               <div className="form-group">
                 <label htmlFor="edit-definition">释义</label>
-                <textarea id="edit-definition" rows={3} value={editDef} onChange={e => setEditDef(e.target.value)} />
+                <input id="edit-definition" type="text" value={editDef} onChange={e => setEditDef(e.target.value)} disabled={saving} />
               </div>
-              <div className="form-group"><label htmlFor="edit-phonetic">音标</label><input id="edit-phonetic" type="text" value={editPhonetic} onChange={e => setEditPhonetic(e.target.value)} /></div>
-              <div className="form-group"><label htmlFor="edit-example">课程例句</label><textarea id="edit-example" rows={3} value={editExample} onChange={e => setEditExample(e.target.value)} /></div>
-              {syncNotice && <p role="status">{syncNotice}</p>}
-              {saveError && <p role="alert">{saveError}</p>}
+              <div className="form-group">
+                <label htmlFor="edit-notebook">所属单词本</label>
+                <select id="edit-notebook" className="notebook-select" value={editBook} onChange={event => setEditBook(event.target.value)} disabled={saving || booksLoading || Boolean(booksError)}>
+                  {!notebooks.some(book => book.id === editBook) && <option value={editBook} disabled>{booksLoading ? '加载单词本…' : '此单词本已不可用，请重新选择'}</option>}
+                  {notebooks.map(book => <option key={book.id} value={book.id}>{book.name}</option>)}
+                </select>
+                <p className="added-words-hint">移动会保留当前记录的复习进度；目标本中已有同词时无法移动。</p>
+                {booksError && <p role="alert">{booksError} <button type="button" className="btn btn-ghost" onClick={refreshBooks}>重试</button></p>}
+              </div>
+              {editError && <p role="alert">{editError}</p>}
               <div className="btn-group">
-                <button type="submit" className="btn btn-primary">保存</button>
-                <button type="button" className="btn btn-secondary" onClick={() => setEditing(false)}>取消</button>
+                <button type="submit" className="btn btn-primary" disabled={saving || booksLoading || Boolean(booksError) || !notebooks.some(book => book.id === editBook)}>{saving ? '保存中…' : '保存'}</button>
+                <button type="button" className="btn btn-secondary" onClick={closeEdit} disabled={saving}>取消</button>
               </div>
             </form>
           </div>

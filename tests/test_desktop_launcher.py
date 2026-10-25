@@ -1,6 +1,4 @@
 """Exercise actual launcher/service lifecycles with disposable libraries and ports."""
-import asyncio
-import hashlib
 import importlib.util
 import json
 import os

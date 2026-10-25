@@ -1,0 +1,7 @@
+# 已核验的间接依赖安全修补版本；变更时连同依赖审计和回归测试更新。
+anyio==4.14.2
+certifi==2026.10.19
+pillow==13.0.0
+python-dotenv==1.2.2
+# 应用使用 SSE；保留已验证的 uvicorn 可选 WebSocket 主版本。
+websockets==15.0.1

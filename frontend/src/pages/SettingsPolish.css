@@ -1,0 +1,99 @@
+/* 设置页共用阅读宽度与导航，表单在不同入口下保持一致。 */
+.sync-page,
+.model-settings.model-settings { width: 100%; max-width: 800px; margin-inline: auto; padding-bottom: 32px; }
+.sync-page .sync-heading,
+.model-settings-heading { margin-bottom: 24px; }
+.sync-page .sync-heading h2,
+.model-settings-heading h2 { margin: 0; color: var(--heading); font: 600 30px/1.3 var(--font-display); letter-spacing: .01em; }
+.sync-page .sync-heading p,
+.model-settings-heading p { margin-top: 10px; color: var(--text-dim); font-size: 14px; line-height: 1.7; }
+.settings-page-nav { display: flex; gap: 8px; border-bottom: 1px solid var(--border); margin-bottom: 28px; }
+.settings-page-nav a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  min-height: 46px;
+  color: var(--text-dim);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-size: 14px;
+}
+.settings-page-nav a[aria-current="page"] { color: var(--accent-text); border-bottom-color: var(--accent); }
+.settings-page-nav a:hover { color: var(--heading); }
+.settings-page-nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.settings-page-nav .navigation-icon { width: 18px; height: 18px; }
+
+.model-settings .settings-section-heading { margin-bottom: 18px; }
+.model-settings .settings-section-heading h3 { font-size: 16px; }
+.model-settings .settings-step { font-size: 12px; width: 28px; height: 28px; flex: 0 0 auto; }
+.model-settings .provider-options { gap: 14px; margin-bottom: 28px; }
+.model-settings .provider-option-description { font-size: 13px; }
+.model-settings .settings-tag { font-size: 12px; }
+.model-settings .settings-panel { padding: 26px; }
+.model-settings .form-group label { font-size: 13px; letter-spacing: normal; text-transform: none; margin-bottom: 10px; }
+.model-settings.model-settings input:not([type="radio"]) { font-size: 16px; min-height: 46px; }
+.model-settings .settings-note { margin-top: 8px; font-size: 13px; line-height: 1.8; }
+.model-settings .settings-panel > .settings-note:last-child { margin-bottom: 0; }
+.model-settings .model-list-heading h4 { font-size: 15px; font-weight: 600; }
+.model-settings .model-option-status { font-size: 12px; }
+.model-settings .settings-refresh { min-height: 40px; }
+.model-settings .settings-actions { gap: 20px; margin-top: 22px; }
+.model-settings .settings-actions button { min-height: 44px; background: var(--accent); border-color: var(--accent); color: var(--ink); font-weight: 600; }
+.model-settings .settings-error,
+.model-settings .settings-success { overflow-wrap: anywhere; }
+
+.sync-page .sync-overview { padding: 24px; background: var(--surface); border-color: var(--border); }
+.sync-page .sync-overview.is-error { border-color: var(--error); }
+.sync-state-heading { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.sync-state-icon { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 auto; color: var(--accent-text); background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 10px; }
+.sync-state-icon .navigation-icon { width: 23px; height: 23px; }
+.sync-page .sync-kicker,
+.sync-page .sync-metrics dt,
+.sync-page .sync-disconnect > span,
+.sync-page .sync-section-title > span,
+.sync-page .sync-tag,
+.sync-page .sync-field-help,
+.sync-page .sync-client-row p { font-size: 12px; }
+.sync-page .sync-account { font-size: 13px; }
+.sync-page .sync-metrics { gap: 20px; }
+.sync-page .sync-metrics > div { min-width: 0; }
+.sync-page .sync-metrics dd.sync-time { font-size: 13px; overflow-wrap: anywhere; }
+.sync-page .sync-setup { margin-top: 32px; }
+.sync-page .sync-method { padding: 20px; font-size: 13px; }
+.sync-page .sync-method strong { font-size: 15px; }
+.sync-page .sync-method.is-selected { box-shadow: inset 0 0 0 1px var(--accent); }
+.sync-page .sync-panel { padding: 26px; }
+.sync-page .sync-panel h4 { font-size: 16px; }
+.sync-page .sync-panel > p,
+.sync-page .sync-backup > p { font-size: 14px; }
+.sync-page .sync-panel label { font-size: 13px; }
+.sync-page .sync-panel input[type="text"] { font-size: 16px; min-height: 46px; }
+.sync-page .sync-guide { font-size: 13px; padding-top: 16px; border-top: 1px solid var(--border); }
+.sync-page .sync-guide summary { min-height: 36px; }
+.sync-page .sync-client-row strong { font-size: 14px; }
+.sync-page .sync-client-row .btn { max-width: 100%; white-space: normal; }
+.sync-page .sync-backup { padding: 24px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.sync-page .sync-text-button { min-height: 36px; }
+
+@media (max-width: 600px) {
+  .sync-page .sync-heading h2,
+  .model-settings-heading h2 { font-size: 26px; }
+  .settings-page-nav { gap: 0; margin-bottom: 24px; }
+  .settings-page-nav a { flex: 1; gap: 6px; padding-inline: 8px; font-size: 13px; }
+  .model-settings .settings-panel,
+  .sync-page .sync-overview,
+  .sync-page .sync-panel,
+  .sync-page .sync-backup { padding: 20px 16px; }
+  .model-settings .provider-options,
+  .sync-page .sync-methods { grid-template-columns: 1fr; gap: 10px; }
+  .model-settings .provider-option,
+  .sync-page .sync-method { padding: 16px; }
+  .model-settings .settings-actions { flex-wrap: wrap; gap: 12px; }
+  .model-settings .settings-actions button { width: 100%; }
+  .sync-page .sync-metrics { gap: 16px; }
+  .sync-page .sync-overview-top { flex-wrap: wrap; }
+  .sync-state-heading { gap: 10px; }
+  .sync-page .sync-overview h3 { font-size: 17px; }
+}

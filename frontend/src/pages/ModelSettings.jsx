@@ -36,12 +36,13 @@ export default function ModelSettings() {
 
   useEffect(() => {
     let active = true
+    const requests = generation
     request('').then(data => {
       if (!active) return
       setSettings({ ...data, deepseek: { ...data.deepseek, api_key: '' } })
       if (data.deepseek.api_key_configured) refreshModels()
     }).catch(err => { if (active) setError(err.message) })
-    return () => { active = false; generation.current++ }
+    return () => { active = false; requests.current++ }
   }, [])
 
   function update(section, key, value) {

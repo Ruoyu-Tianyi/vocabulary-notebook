@@ -12,28 +12,26 @@ DEFAULT_MODEL = "deepseek-flash"
 
 def load_config() -> dict:
     global _CONFIG
-    if _CONFIG:
+    with _AI_LOCK:
+        if _CONFIG:
+            return _CONFIG
+        try:
+            data = json.loads(CONFIG_FILE.read_text(encoding="utf-8-sig")) if CONFIG_FILE.exists() else {"provider": "deepseek", "deepseek": {"model": DEFAULT_MODEL}}
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"config.json 格式错误：{exc}") from exc
+        if not isinstance(data, dict):
+            raise RuntimeError("config.json 必须是 JSON 对象")
+        for name in ("deepseek", "ollama", "sync", "srs"):
+            if not isinstance(data.get(name, {}), dict):
+                raise RuntimeError(f"{name} 必须是 JSON 对象")
+        if data.get("provider", "deepseek") not in ("deepseek", "ollama"):
+            raise RuntimeError("此版本使用 DeepSeek API，请设置 provider=deepseek")
+        model = data.get("deepseek", {}).get("model", DEFAULT_MODEL)
+        if not isinstance(model, str) or not model.strip() or len(model) > 100:
+            raise RuntimeError("模型名称无效")
+        data["provider"] = "deepseek"
+        _CONFIG = data
         return _CONFIG
-
-    if not CONFIG_FILE.exists():
-        _CONFIG = {"provider": "deepseek", "deepseek": {"model": DEFAULT_MODEL}}
-        return _CONFIG
-
-    try:
-        _CONFIG = json.loads(CONFIG_FILE.read_text(encoding="utf-8-sig"))
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"config.json 格式错误：{e}")
-
-    if not isinstance(_CONFIG, dict):
-        _CONFIG = {}
-        raise RuntimeError("config.json 必须是 JSON 对象")
-    if _CONFIG.get("provider", "deepseek") not in ("deepseek", "ollama"):
-        _CONFIG = {}
-        raise RuntimeError("此版本使用 DeepSeek API，请设置 provider=deepseek")
-    # Upgrade old Ollama configs in memory while retaining notebook/sync settings.
-    _CONFIG["provider"] = "deepseek"
-
-    return _CONFIG
 
 
 def get_provider() -> str:

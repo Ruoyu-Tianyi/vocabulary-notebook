@@ -1,7 +1,9 @@
 """Google Drive appDataFolder transport and desktop OAuth (loopback + PKCE)."""
 import base64
 import hashlib
+import html
 import json
+import os
 import secrets
 import threading
 import time
@@ -46,6 +48,8 @@ class DriveSync:
         self.auth_lock = threading.RLock()
         self.busy = False
         self.auth_pending = False
+        self.authorization_url = ""
+        self._auth_cancel = None
         self.error = ""
 
     @property
@@ -79,6 +83,8 @@ class DriveSync:
                 raise ValueError("请先断开同步文件夹，再使用 API 直连")
             client = document["installed"]
             state, verifier = secrets.token_urlsafe(32), secrets.token_urlsafe(64)
+            cancelled = threading.Event()
+            self._auth_cancel = cancelled
             challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
             owner = self
 
@@ -89,7 +95,7 @@ class DriveSync:
                 def do_GET(self):
                     parsed = urlparse(self.path)
                     query = parse_qs(parsed.query)
-                    if parsed.path != "/callback" or query.get("state", [""])[0] != state:
+                    if cancelled.is_set() or parsed.path != "/callback" or query.get("state", [""])[0] != state:
                         self.send_error(400, "Invalid OAuth callback")
                         return
                     try:
@@ -111,6 +117,8 @@ class DriveSync:
                             user = account.json()["user"]
                         binding = client["client_id"] + ":" + user["permissionId"]
                         with owner.auth_lock, owner.write_lock:
+                            if cancelled.is_set():
+                                raise ValueError("本次授权已取消，请返回词汇本重新连接")
                             data = storage.read(owner.data_path())
                             if data["_sync"]["account"] not in ("", binding):
                                 raise ValueError("此词库已绑定另一账号或 OAuth 客户端。请使用原账号和客户端，或为新账号指定新的 VOCAB_DATA_FILE")
@@ -118,6 +126,7 @@ class DriveSync:
                             if data["_sync"].get("transport") != "api:" + binding:
                                 data["_sync"]["uploaded"] = []
                                 data["_sync"]["downloaded_files"] = []
+                                data["_sync"]["last_synced_at"] = None
                             data["_sync"]["transport"] = "api:" + binding
                             storage.atomic_write(owner.data_path(), data)
                             token["email"] = user.get("emailAddress", "Google Drive")
@@ -125,11 +134,17 @@ class DriveSync:
                             owner.error = ""
                         message = "Google Drive 连接成功。请返回词汇本，数据会自动同步。"
                     except Exception as exc:
-                        owner.error = safe_error(exc)
-                        message = owner.error
+                        message = safe_error(exc)
+                        with owner.auth_lock:
+                            if not cancelled.is_set():
+                                owner.error = message
                     finally:
-                        owner.auth_pending = False
-                    payload = ("<!doctype html><meta charset='utf-8'><title>词汇本同步</title><p>" + message + "</p>").encode()
+                        with owner.auth_lock:
+                            if owner._auth_cancel is cancelled:
+                                owner.auth_pending = False
+                                owner.authorization_url = ""
+                            cancelled.set()
+                    payload = ("<!doctype html><meta charset='utf-8'><title>词汇本同步</title><p>" + html.escape(message) + "</p>").encode()
                     self.send_response(200)
                     self.send_header("Content-Type", "text/html; charset=utf-8")
                     self.send_header("Content-Length", str(len(payload)))
@@ -145,20 +160,32 @@ class DriveSync:
                 "code_challenge": challenge, "code_challenge_method": "S256",
                 "access_type": "offline", "prompt": "consent"})
             self.auth_pending, self.error = True, ""
+            self.authorization_url = url
 
             def wait_callback():
                 deadline = time.monotonic() + 180
                 try:
-                    while self.auth_pending and time.monotonic() < deadline:
+                    while not cancelled.is_set() and self.auth_pending and time.monotonic() < deadline:
                         server.handle_request()
-                    if self.auth_pending:
-                        self.error = "Google 授权超时，请重新连接"
-                        self.auth_pending = False
+                    with self.auth_lock:
+                        if self._auth_cancel is cancelled and self.auth_pending and not cancelled.is_set():
+                            self.error = "Google 授权超时，请重新连接"
+                            self.auth_pending = False
+                            self.authorization_url = ""
+                            cancelled.set()
                 finally:
                     server.server_close()
 
             threading.Thread(target=wait_callback, daemon=True).start()
             return {"authorization_url": url}
+
+    def cancel_auth(self):
+        with self.auth_lock:
+            if self._auth_cancel:
+                self._auth_cancel.set()
+            self.auth_pending = False
+            self.authorization_url = ""
+            self.error = ""
 
     def disconnect(self):
         with self.auth_lock:
@@ -204,6 +231,7 @@ class DriveSync:
             if previous.get("library_id") != identity["library_id"] or not previous.get("enabled"):
                 data["_sync"]["uploaded"] = []
                 data["_sync"]["downloaded_files"] = []
+                data["_sync"]["last_synced_at"] = None
                 data["_sync"]["transport"] = "folder:" + identity["library_id"]
                 storage.atomic_write(self.data_path(), data)
             storage.atomic_write(self.secrets_dir / "sync-settings.json", {
@@ -216,16 +244,20 @@ class DriveSync:
             token = self._read_secret("token.json")
             if not token:
                 raise ValueError("尚未连接 Google Drive")
-            if token.get("expires_at", 0) <= time.time() + 60:
-                client = self._read_secret("client_secret.json")["installed"]
-                response = http.post("https://oauth2.googleapis.com/token", data={
-                    "client_id": client["client_id"], "client_secret": client["client_secret"],
-                    "refresh_token": token["refresh_token"], "grant_type": "refresh_token"})
-                response.raise_for_status()
-                token.update(response.json())
-                token["expires_at"] = time.time() + token.get("expires_in", 3600)
+            client = self._read_secret("client_secret.json")
+        # 网络请求不持有状态锁，避免令牌刷新阻塞状态轮询和应用事件循环。
+        if token.get("expires_at", 0) <= time.time() + 60:
+            if not client or not token.get("refresh_token"):
+                raise ValueError("Google 授权不完整，请重新连接 Google Drive")
+            response = http.post("https://oauth2.googleapis.com/token", data={
+                "client_id": client["installed"]["client_id"], "client_secret": client["installed"]["client_secret"],
+                "refresh_token": token["refresh_token"], "grant_type": "refresh_token"})
+            response.raise_for_status()
+            token.update(response.json())
+            token["expires_at"] = time.time() + token.get("expires_in", 3600)
+            with self.auth_lock:
                 storage.atomic_write(self.secrets_dir / "token.json", token)
-            return token["access_token"]
+        return token["access_token"]
 
     def status(self):
         with self.auth_lock, self.write_lock:
@@ -237,20 +269,23 @@ class DriveSync:
                     "connected": bool(token) or folder_mode, "account": folder.get("folder_path", "") if folder_mode else (token or {}).get("email", ""),
                     "folder_path": folder.get("folder_path", ""), "folder_enabled": folder_mode,
                     "auth_pending": self.auth_pending, "syncing": self.busy,
+                    "authorization_url": self.authorization_url if self.auth_pending else "",
                     "pending": len(set(meta["operations"]) - set(meta["uploaded"])),
                     "last_synced_at": meta.get("last_synced_at"), "error": self.error,
                     "last_pulled_at": meta.get("last_pulled_at"),
                     "interval_seconds": self.settings()["interval_seconds"]}
 
     def sync(self):
-        if not self.lock.acquire(blocking=False):
-            return {"busy": True}
         with self.auth_lock:
+            if self.auth_pending:
+                return {"busy": True}
+            if not self.lock.acquire(blocking=False):
+                return {"busy": True}
             self.busy = True
-        pulled = pushed = 0
+        progress = {"pulled": 0, "pushed": 0}
         try:
             if self.folder_settings().get("enabled"):
-                return self._sync_folder()
+                return self._sync_folder(progress)
             with httpx.Client(timeout=30) as http:
                 http.headers["Authorization"] = "Bearer " + self._access_token(http)
                 files, page = [], None
@@ -286,17 +321,18 @@ class DriveSync:
                         raise ValueError("云端词库版本不兼容，请升级应用")
                     operations = document["operations"]
                     with self.write_lock:
-                        pulled += storage.merge(self.data_path(), operations)
+                        progress["pulled"] += storage.merge(self.data_path(), operations)
                         data = storage.read(self.data_path())
                         meta = data["_sync"]
                         meta["downloaded_files"] = sorted(set(meta.get("downloaded_files", [])) | {file["id"]})
                         meta["uploaded"] = sorted(set(meta["uploaded"]) | {op["id"] for op in operations})
-                        if pulled:
+                        if progress["pulled"]:
                             meta["last_pulled_at"] = datetime.now(timezone.utc).isoformat()
                         storage.atomic_write(self.data_path(), data)
                 with self.write_lock:
                     meta = storage.read(self.data_path())["_sync"]
-                    pending = [op for key, op in sorted(meta["operations"].items()) if key not in set(meta["uploaded"])]
+                    uploaded = set(meta["uploaded"])
+                    pending = [op for key, op in sorted(meta["operations"].items()) if key not in uploaded]
                 for start in range(0, len(pending), 50):
                     batch = pending[start:start + 50]
                     storage.validate_operations(batch)
@@ -321,23 +357,24 @@ class DriveSync:
                         meta["uploaded"] = sorted(set(meta["uploaded"]) | {op["id"] for op in batch})
                         meta["downloaded_files"] = sorted(set(meta.get("downloaded_files", [])) | {file_id})
                         storage.atomic_write(self.data_path(), data)
-                    pushed += len(batch)
+                    progress["pushed"] += len(batch)
             with self.write_lock:
                 data = storage.read(self.data_path())
                 data["_sync"]["last_synced_at"] = datetime.now(timezone.utc).isoformat()
-                if pulled:
+                if progress["pulled"]:
                     data["_sync"]["last_pulled_at"] = data["_sync"]["last_synced_at"]
                 storage.atomic_write(self.data_path(), data)
             self.error = ""
-            return {"pulled": pulled, "pushed": pushed}
+            return progress
         except Exception as exc:
             self.error = safe_error(exc)
-            return {"error": self.error, "pulled": pulled, "pushed": pushed}
+            return {"error": self.error, **progress}
         finally:
-            self.busy = False
-            self.lock.release()
+            with self.auth_lock:
+                self.busy = False
+                self.lock.release()
 
-    def _sync_folder(self):
+    def _sync_folder(self, progress):
         settings = self.folder_settings()
         root = Path(settings["folder_path"])
         if not root.is_dir() or not (root / "library.json").is_file():
@@ -348,7 +385,6 @@ class DriveSync:
         with self.write_lock:
             meta = storage.read(self.data_path())["_sync"]
             seen = set(meta.get("downloaded_files", []))
-        pulled = pushed = 0
         # Files are immutable and named by their content; cloud conflict copies deduplicate by op ID.
         for file in sorted(root.glob("vocabulary-*.json")):
             if file.name in seen:
@@ -359,12 +395,12 @@ class DriveSync:
             if document.get("version") != storage.VERSION:
                 raise ValueError("同步文件版本不兼容，请升级应用")
             with self.write_lock:
-                pulled += storage.merge(self.data_path(), document["operations"])
+                progress["pulled"] += storage.merge(self.data_path(), document["operations"])
                 data = storage.read(self.data_path())
                 meta = data["_sync"]
                 meta["downloaded_files"] = sorted(set(meta.get("downloaded_files", [])) | {file.name})
                 meta["uploaded"] = sorted(set(meta["uploaded"]) | {op["id"] for op in document["operations"]})
-                if pulled:
+                if progress["pulled"]:
                     meta["last_pulled_at"] = datetime.now(timezone.utc).isoformat()
                 storage.atomic_write(self.data_path(), data)
         with self.write_lock:
@@ -386,7 +422,6 @@ class DriveSync:
                 with temp.open("wb") as stream:
                     stream.write(content)
                     stream.flush()
-                    import os
                     os.fsync(stream.fileno())
                 temp.replace(file)
             finally:
@@ -397,10 +432,10 @@ class DriveSync:
                 meta["uploaded"] = sorted(set(meta["uploaded"]) | {op["id"] for op in batch})
                 meta["downloaded_files"] = sorted(set(meta.get("downloaded_files", [])) | {name})
                 storage.atomic_write(self.data_path(), data)
-            pushed += len(batch)
+            progress["pushed"] += len(batch)
         with self.write_lock:
             data = storage.read(self.data_path())
             data["_sync"]["last_synced_at"] = datetime.now(timezone.utc).isoformat()
             storage.atomic_write(self.data_path(), data)
         self.error = ""
-        return {"pulled": pulled, "pushed": pushed}
+        return progress

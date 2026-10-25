@@ -1,5 +1,4 @@
 """FSRS 算法属性 + 边界测试。"""
-import math
 import pytest
 from fsrs import (
     retrievability,

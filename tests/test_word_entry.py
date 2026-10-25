@@ -23,7 +23,7 @@ def queue_loop():
 def client(tmp_path, monkeypatch):
     monkeypatch.setattr(app, "DATA_FILE", tmp_path / "words.json")
     monkeypatch.setattr(app.config, "get_ai_settings", lambda: {"configured": False})
-    monkeypatch.setattr(app, "_enrich_jobs", {})
+    monkeypatch.setattr(app, "_enrich_states", {})
     monkeypatch.setattr(app, "_enriching_ids", {})
     monkeypatch.setattr(app, "_enrich_queue", asyncio.Queue())
     return TestClient(app.app)
@@ -49,8 +49,8 @@ def test_duplicate_returns_existing_fields_and_schedule_without_writing_or_enric
 
 
 def test_duplicate_lookup_returns_only_selected_notebook_contents(client):
-    law = client.post("/api/notebooks", json={"name": "Law"}).json()["notebook"]["id"]
-    finance = client.post("/api/notebooks", json={"name": "Finance"}).json()["notebook"]["id"]
+    law = client.post("/api/notebooks", json={"name": "Law"}).json()["id"]
+    finance = client.post("/api/notebooks", json={"name": "Finance"}).json()["id"]
     law_word = client.post("/api/words", json={"word": "security", "definition": "n. 担保", "notebook_id": law}).json()["word"]
     fin_word = client.post("/api/words", json={"word": "security", "definition": "n. 证券", "notebook_id": finance}).json()["word"]
     for book_id, expected in [(law, law_word), (finance, fin_word)]:
@@ -65,7 +65,7 @@ def test_duplicate_lookup_returns_only_selected_notebook_contents(client):
 def test_existing_unfinished_word_returns_current_status_without_retrying(client, monkeypatch, status):
     created = client.post("/api/words", json={"word": "consideration"}).json()["word"]
     monkeypatch.setattr(app.config, "get_ai_settings", lambda: {"configured": True})
-    app._enrich_jobs[created["id"]] = {"status": status, "error": "test error"}
+    app._enrich_states[created["id"]] = {"status": status, "error": "test error"}
     original = app.DATA_FILE.read_bytes()
     result = client.post("/api/words", json={"word": "Consideration"})
     assert result.json()["detail"]["enrichment"]["status"] == status

@@ -1,0 +1,14 @@
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-config --strict-markers"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["frontend"]
+
+[tool.ruff.lint]
+# 先约束未定义名称、无效导入和逻辑错误，避免格式化掩盖功能变更。
+select = ["F", "E4", "E9"]

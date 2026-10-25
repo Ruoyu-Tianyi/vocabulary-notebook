@@ -1,31 +1,28 @@
 import { useState, useEffect } from 'react'
+import NavigationIcon from './NavigationIcon'
 
 export default function ThemeToggle() {
-  const [dark, setDark] = useState(true)
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem('theme') !== 'light' }
+    catch { return true }
+  })
 
   useEffect(() => {
-    const saved = localStorage.getItem('theme')
-    const isDark = saved ? saved === 'dark' : true
-    setDark(isDark)
-    document.documentElement.dataset.theme = isDark ? 'dark' : 'light'
-  }, [])
-
-  function toggle() {
-    const next = !dark
-    setDark(next)
-    const theme = next ? 'dark' : 'light'
+    const theme = dark ? 'dark' : 'light'
     document.documentElement.dataset.theme = theme
-    localStorage.setItem('theme', theme)
-  }
+    try { localStorage.setItem('theme', theme) } catch { /* 浏览器禁用存储时仍允许本次切换。 */ }
+  }, [dark])
 
   return (
     <button
-      className="theme-toggle"
-      onClick={toggle}
-      title={dark ? '切换浅色' : '切换深色'}
-      aria-label={dark ? '切换浅色模式' : '切换深色模式'}
+      type="button"
+      className="utility-item"
+      onClick={() => setDark(value => !value)}
+      aria-label={`外观主题：当前为${dark ? '深色' : '浅色'}，切换${dark ? '浅色' : '深色'}模式`}
     >
-      {dark ? '☀' : '☾'}
+      <NavigationIcon name={dark ? 'moon' : 'sun'} />
+      <span className="utility-copy"><span className="utility-title">外观主题</span><span className="utility-description">当前为{dark ? '深色' : '浅色'}</span></span>
+      <span className="utility-action">切换{dark ? '浅色' : '深色'}</span>
     </button>
   )
 }

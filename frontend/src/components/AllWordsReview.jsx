@@ -1,27 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { shuffle } from '../lib/shuffle'
 
-function shuffle(items) {
-  const result = [...items]
-  for (let index = result.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1))
-    const current = result[index]
-    result[index] = result[swapIndex]
-    result[swapIndex] = current
-  }
-  return result
-}
-
-export default function AllWordsReview({ words }) {
+export default function AllWordsReview({ words, notebookNames }) {
   const [order, setOrder] = useState('alpha')
-  const [randomSeed, setRandomSeed] = useState(0)
+  const [randomSeed, setRandomSeed] = useState(() => Math.floor(Math.random() * 0x100000000))
   const [index, setIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [done, setDone] = useState(false)
   const actionsRef = useRef(null)
+  const answerId = useId()
 
   const deck = useMemo(() => {
     const alphabetic = [...words].sort((a, b) => a.word.localeCompare(b.word, 'en'))
-    return order === 'random' ? shuffle(alphabetic) : alphabetic
+    return order === 'random' ? shuffle(alphabetic, randomSeed) : alphabetic
   }, [order, randomSeed, words])
 
   useEffect(() => {
@@ -34,7 +25,8 @@ export default function AllWordsReview({ words }) {
 
   useEffect(() => {
     if (flipped) {
-      actionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
+      actionsRef.current?.scrollIntoView({ behavior, block: 'nearest' })
     }
   }, [flipped])
 
@@ -63,8 +55,9 @@ export default function AllWordsReview({ words }) {
 
   useEffect(() => {
     function handleKey(event) {
+      if (done || event.defaultPrevented || event.isComposing) return
       const tagName = event.target?.tagName
-      if (tagName === 'INPUT' || tagName === 'TEXTAREA' || event.target?.isContentEditable) return
+      if (['INPUT', 'TEXTAREA', 'SELECT', 'A', 'SUMMARY'].includes(tagName) || event.target?.isContentEditable) return
       if (event.ctrlKey || event.metaKey || event.altKey) return
 
       if ((event.key === ' ' || event.key === 'Enter') && current && !flipped) {
@@ -81,7 +74,7 @@ export default function AllWordsReview({ words }) {
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [current, flipped, goNext, goPrevious])
+  }, [current, done, flipped, goNext, goPrevious])
 
   if (done) {
     return (
@@ -103,19 +96,17 @@ export default function AllWordsReview({ words }) {
     setIndex(0)
     setFlipped(false)
     setDone(false)
-    if (nextOrder === order) {
-      if (nextOrder === 'random') setRandomSeed(seed => seed + 1)
-      return
-    }
+    if (nextOrder === 'random') setRandomSeed(seed => seed + 1)
     setOrder(nextOrder)
   }
 
   return (
     <div className="srs-container all-review-container">
       <div className="all-review-toolbar">
-        <div className="order-switch" role="group" aria-label="单词顺序">
+        <div className="order-switch" role="group" aria-label="单词顺序" onKeyDown={event => { if (!['/', '?'].includes(event.key)) event.stopPropagation() }}>
           <button
             type="button"
+            aria-pressed={order === 'alpha'}
             className={order === 'alpha' ? 'active' : ''}
             onClick={() => changeOrder('alpha')}
           >
@@ -123,6 +114,7 @@ export default function AllWordsReview({ words }) {
           </button>
           <button
             type="button"
+            aria-pressed={order === 'random'}
             className={order === 'random' ? 'active' : ''}
             onClick={() => changeOrder('random')}
           >
@@ -133,24 +125,26 @@ export default function AllWordsReview({ words }) {
           第 {index + 1} / {deck.length} 个 · 空格翻面 · ← → 切换
         </div>
       </div>
+      {notebookNames && <div className="srs-progress" aria-live="polite">单词本：{notebookNames[current.notebook_id || 'default'] || '加载中…'}</div>}
 
       <button
         type="button"
         className="flashcard"
         onClick={() => !flipped && setFlipped(true)}
-        aria-label={flipped ? `${current.word} 的释义` : `单词 ${current.word}，点击查看释义`}
+        aria-label={flipped ? `${current.word}，答案已展开` : `单词 ${current.word}，点击查看释义`}
+        aria-describedby={flipped ? answerId : undefined}
         aria-pressed={flipped}
       >
         <span
           key={`${order}-${randomSeed}-${index}-${current.id}`}
           className={`flashcard-inner ${flipped ? 'flipped' : ''}`}
         >
-          <span className="flashcard-front">
+          <span className="flashcard-front" aria-hidden={flipped}>
             <span className="word-display">{current.word}</span>
             {current.phonetic && <span className="phonetic-display">{current.phonetic}</span>}
             <span className="flip-hint">点击或按空格查看答案</span>
           </span>
-          <span className="flashcard-back">
+          <span className="flashcard-back" id={answerId} aria-hidden={!flipped}>
             <span className="word-display">{current.word}</span>
             {current.phonetic && <span className="phonetic-display">{current.phonetic}</span>}
             <span className="definition-display">{current.definition}</span>

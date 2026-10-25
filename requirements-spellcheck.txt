@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# 可选本机拼写校验，还需系统已有 Enchant 库及 en_US 词典。
+pyenchant==3.3.0

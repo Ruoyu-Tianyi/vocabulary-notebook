@@ -9,15 +9,17 @@ import { useEffect } from 'react'
 export function useGlobalShortcuts({ searchInputRef, toggleHelp }) {
   useEffect(() => {
     function handleKey(e) {
+      if (e.defaultPrevented || e.isComposing) return
       // 输入态不抢键
       const tag = e.target?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target?.isContentEditable) {
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) {
         return
       }
       // 已经按了修饰键的不抢（让浏览器 / 其他组件处理）
       if (e.ctrlKey || e.metaKey || e.altKey) return
 
       if (e.key === '/') {
+        if (!searchInputRef?.current) return
         e.preventDefault()
         searchInputRef?.current?.focus()
         searchInputRef?.current?.select?.()

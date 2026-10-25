@@ -1,4 +1,8 @@
-fastapi==0.115.6
+-c constraints.txt
+
+fastapi==0.133.1
+starlette==1.3.1
+pydantic==2.13.4
 uvicorn[standard]==0.34.0
 httpx==0.28.1
 # 给 httpx 加 SOCKS 代理支持。all_proxy=socks5:// 时 httpx 会自动走 SOCKS，
@@ -6,3 +10,5 @@ httpx==0.28.1
 # 等价于 `pip install "httpx[socks]"`，只是把依赖显式写出来。
 socksio==1.0.0
 fpdf2==2.8.4
+# PDF 导出前校验字体字形覆盖；原本已由 fpdf2 间接依赖。
+fonttools==4.60.2

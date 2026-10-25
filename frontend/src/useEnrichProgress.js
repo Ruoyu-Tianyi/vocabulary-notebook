@@ -26,13 +26,17 @@ export function useEnrichProgress(enabled = false, onComplete) {
       return
     }
 
-    let timer = null
+    const controller = new AbortController()
+    let running = false
 
     async function poll() {
+      if (running || controller.signal.aborted) return
+      running = true
       try {
-        const res = await fetch('/api/enrich/progress')
+        const res = await fetch('/api/enrich/progress', { signal: controller.signal })
         if (res.ok) {
           const data = await res.json()
+          if (controller.signal.aborted) return
           setProgress(data)
           if (
             data.batch_total > 0 &&
@@ -45,13 +49,13 @@ export function useEnrichProgress(enabled = false, onComplete) {
           }
         }
       } catch {
-        // 忽略
-      }
+        // 短暂断连留待下轮重试，主动退出不更新状态。
+      } finally { running = false }
     }
 
     poll()
-    timer = setInterval(poll, 2000)
-    return () => clearInterval(timer)
+    const timer = setInterval(poll, 2000)
+    return () => { clearInterval(timer); controller.abort() }
   }, [enabled])
 
   return progress
