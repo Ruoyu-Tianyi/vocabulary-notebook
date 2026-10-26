@@ -41,9 +41,9 @@ def make_font(path, characters):
     builder.setupHorizontalMetrics({glyph: (600, 50) for glyph in glyph_order})
     builder.setupHorizontalHeader(ascent=800, descent=-200)
     builder.setupOS2(sTypoAscender=800, sTypoDescender=-200, usWinAscent=800, usWinDescent=200)
-    builder.setupNameTable({"familyName": "Vocabulary PDF Test", "styleName": "Regular",
-                            "uniqueFontIdentifier": "VocabularyPdfTest-Regular", "fullName": "Vocabulary PDF Test Regular",
-                            "psName": "VocabularyPdfTest-Regular", "version": "Version 1.0"})
+    builder.setupNameTable({"familyName": "Vocove PDF Test", "styleName": "Regular",
+                            "uniqueFontIdentifier": "VocovePdfTest-Regular", "fullName": "Vocove PDF Test Regular",
+                            "psName": "VocovePdfTest-Regular", "version": "Version 1.0"})
     builder.setupPost()
     builder.save(path)
     return str(path)
@@ -51,7 +51,7 @@ def make_font(path, characters):
 
 @pytest.fixture
 def unicode_font(tmp_path):
-    characters = string.printable + "·词汇笔记本导出日期共个单词合同əæɒˈ"
+    characters = string.printable + "·Vocove导出日期共个单词合同əæɒˈ"
     return make_font(tmp_path / "test-unicode.ttf", characters)
 
 
@@ -71,7 +71,7 @@ def test_missing_default_allows_latin1_export(monkeypatch):
 @pytest.mark.parametrize("filename", ["missing.ttf", "collection.ttc", "variable.woff2"])
 def test_invalid_explicit_font_never_silently_falls_back(tmp_path, monkeypatch, filename):
     monkeypatch.setenv(pdf_export.CJK_FONT_ENV, str(tmp_path / filename))
-    with pytest.raises(pdf_export.PdfExportError, match="VOCABULARY_CJK_FONT"):
+    with pytest.raises(pdf_export.PdfExportError, match="VOCOVE_CJK_FONT"):
         pdf_export.resolve_cjk_font()
 
 
@@ -80,7 +80,7 @@ def test_invalid_explicit_font_never_silently_falls_back(tmp_path, monkeypatch, 
     {"definition": "n. &#21512;&#21516;"}, {"example": "“Contract”"},
 ])
 def test_unicode_content_requires_font_instead_of_losing_characters(changes):
-    with pytest.raises(pdf_export.PdfExportError, match="VOCABULARY_CJK_FONT"):
+    with pytest.raises(pdf_export.PdfExportError, match="VOCOVE_CJK_FONT"):
         pdf_export._build_pdf([word(**changes)], "2026-10-25", False, None)
 
 
@@ -145,7 +145,7 @@ def test_pdf_api_returns_font_error_without_reading_or_writing_live_data(monkeyp
     monkeypatch.setattr(app, "load_words", lambda: {"words": [word(definition="n. 合同")]})
     result = TestClient(app.app).get("/api/words/export", params={"format": "pdf"})
     assert result.status_code == 422
-    assert "VOCABULARY_CJK_FONT" in result.json()["detail"]
+    assert "VOCOVE_CJK_FONT" in result.json()["detail"]
 
 
 def test_pdf_api_uses_explicit_font_and_preserves_attachment(unicode_font, monkeypatch):
@@ -154,5 +154,5 @@ def test_pdf_api_uses_explicit_font_and_preserves_attachment(unicode_font, monke
     result = TestClient(app.app).get("/api/words/export", params={"format": "pdf"})
     assert result.status_code == 200
     assert result.headers["content-type"] == "application/pdf"
-    assert "attachment; filename=vocabulary-" in result.headers["content-disposition"]
+    assert "attachment; filename=vocove-" in result.headers["content-disposition"]
     assert result.content.startswith(b"%PDF-")

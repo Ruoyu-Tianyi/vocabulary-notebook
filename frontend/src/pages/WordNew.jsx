@@ -6,6 +6,7 @@ import WordCard from '../components/WordCard'
 import { useNotebooks } from '../useNotebooks'
 import { useTransientMessage } from '../useTransientMessage'
 import NavigationIcon from '../components/NavigationIcon'
+import { isShortcutEvent } from '../lib/keyboard'
 import './NotebookPolish.css'
 
 function useProviderLabel() {
@@ -36,6 +37,8 @@ export default function WordNew() {
   const [addedWords, setAddedWords] = useState([])
   const addedRef = useRef([])
   const inputRef = useRef(null)
+  const composingRef = useRef(false)
+  const compositionSubmitRef = useRef(false)
   const navigate = useNavigate()
   const providerLabel = useProviderLabel()
   useEffect(() => { addedRef.current = addedWords }, [addedWords])
@@ -104,6 +107,7 @@ export default function WordNew() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (composingRef.current || compositionSubmitRef.current) return
     if (!word.trim() || loading || booksLoading || booksError || !selectedBook) return
     const submitted = word.trim()
     setLoading(true)
@@ -128,7 +132,18 @@ export default function WordNew() {
   }
 
   function handleKeyDown(e) {
-    if (e.key === 'Escape') {
+    const composing = composingRef.current || e.nativeEvent?.isComposing || e.nativeEvent?.keyCode === 229
+    // 不阻止输入法的候选确认；只在表单提交时拦截这次 Enter 的隐式保存。
+    if (e.key === 'Enter' && composing) {
+      compositionSubmitRef.current = true
+      return
+    }
+    if (!composing) compositionSubmitRef.current = false
+    if (e.key === 'Enter' && e.repeat) {
+      e.preventDefault()
+      return
+    }
+    if (e.key === 'Escape' && !composing && isShortcutEvent(e)) {
       e.preventDefault()
       navigate(-1)
     }
@@ -173,6 +188,10 @@ export default function WordNew() {
             value={word}
             onChange={e => setWord(e.target.value)}
             onKeyDown={handleKeyDown}
+            onKeyUp={event => { if (event.key === 'Enter') compositionSubmitRef.current = false }}
+            onCompositionStart={() => { composingRef.current = true; compositionSubmitRef.current = false }}
+            onCompositionEnd={() => { composingRef.current = false }}
+            onBlur={() => { composingRef.current = false; compositionSubmitRef.current = false }}
             placeholder="输入英文单词…"
             aria-describedby="new-word-hint"
             autoComplete="off"
@@ -191,7 +210,7 @@ export default function WordNew() {
         </div>
         <div className="word-new-form-footer">
           <span>保存后可继续输入，补全结果会显示在下方。</span>
-          <span className="word-new-shortcuts"><kbd>Enter</kbd> 保存 <span>·</span> <kbd>Esc</kbd> 返回</span>
+          <span className="word-new-shortcuts">单词输入框内：<kbd>Enter</kbd> 保存 <span>·</span> <kbd>Esc</kbd> 返回</span>
         </div>
       </form>
       {addedWords.length > 0 && <section className="added-words" aria-labelledby="added-words-heading">

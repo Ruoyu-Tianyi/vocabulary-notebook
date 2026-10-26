@@ -4,6 +4,8 @@ import ModelStatus from './ModelStatus'
 import CloudStatus from './CloudStatus'
 import ThemeToggle from './ThemeToggle'
 import NavigationIcon from './NavigationIcon'
+import { getGlobalShortcutAction } from '../lib/globalShortcuts'
+import { isShortcutEvent } from '../lib/keyboard'
 
 export default function AppHeader({ remote, dueCount, onOpenHelp, sidebarCollapsed, onToggleSidebar }) {
   const location = useLocation()
@@ -48,21 +50,19 @@ export default function AppHeader({ remote, dueCount, onOpenHelp, sidebarCollaps
   ]
 
   return <header className="app-header" onKeyDown={event => {
-    // 保留搜索和帮助快捷键，其余按键只操作导航，不传给背后的复习卡片。
-    if (event.key === '/') return
-    event.stopPropagation()
-    if (event.key === 'Escape' && open) { event.preventDefault(); closeTools(true) }
-    if (event.key === '?' && !event.ctrlKey && !event.metaKey && !event.altKey) {
-      event.preventDefault()
-      closeTools(open)
-      onOpenHelp()
+    // 全局操作可离开菜单；其余按键留给导航，避免操作背后的复习卡片。
+    if (getGlobalShortcutAction(event)) {
+      if (open) closeTools(event.key === '?')
+      return
     }
+    event.stopPropagation()
+    if (event.key === 'Escape' && open && isShortcutEvent(event)) { event.preventDefault(); closeTools(true) }
   }}>
     <button type="button" className="sidebar-toggle" aria-label={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'} title={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'} aria-expanded={!sidebarCollapsed} aria-controls="learning-navigation" onClick={onToggleSidebar}>
       <NavigationIcon name={sidebarCollapsed ? 'expand' : 'collapse'} />
     </button>
     <div className="header-topline">
-      <h1 className="app-title"><Link to="/" aria-label="词汇笔记本"><span className="brand-mark"><NavigationIcon name="words" /></span><span>词汇笔记本<span className="brand-caption">VOCABULARY NOTEBOOK</span></span></Link></h1>
+      <h1 className="app-title"><Link to="/" aria-label="Vocove"><span className="brand-mark"><NavigationIcon name="words" /></span><span>Vocove<span className="brand-caption">个人词汇本</span></span></Link></h1>
       <details className={`header-tools${isSettings ? ' is-current' : ''}`} ref={detailsRef}
         onToggle={event => setOpen(event.currentTarget.open)}>
         <summary className="header-tools-trigger" ref={summaryRef} aria-expanded={open} aria-controls="header-tools-panel"
@@ -81,9 +81,9 @@ export default function AppHeader({ remote, dueCount, onOpenHelp, sidebarCollaps
           </nav>
           <div className="header-tools-preferences">
             <ThemeToggle />
-            <button type="button" className="utility-item" onClick={() => { closeTools(true); onOpenHelp() }}>
+            <button type="button" className="utility-item" aria-keyshortcuts="Shift+/" onClick={() => { closeTools(true); onOpenHelp() }}>
               <NavigationIcon name="keyboard" />
-              <span className="utility-copy"><span className="utility-title">键盘快捷键</span><span className="utility-description">搜索、翻卡与评分</span></span>
+              <span className="utility-copy"><span className="utility-title">键盘快捷键</span><span className="utility-description">搜索、添加与复习操作</span></span>
               <kbd>?</kbd>
             </button>
           </div>
@@ -102,7 +102,7 @@ export default function AppHeader({ remote, dueCount, onOpenHelp, sidebarCollaps
           {link.badge > 0 && <span className="nav-badge" aria-hidden="true">{link.badge > 99 ? '99+' : link.badge}</span>}
         </Link>)}
       </nav>
-      <Link to={`/word/new${notebookQuery}`} className={`header-add${adding ? ' active' : ''}`} aria-label="添加单词" title={sidebarCollapsed ? '添加单词' : undefined} aria-current={adding ? 'page' : undefined}>
+      <Link to={`/word/new${notebookQuery}`} className={`header-add${adding ? ' active' : ''}`} aria-label="添加单词" aria-keyshortcuts="n" title="添加单词（N）" aria-current={adding ? 'page' : undefined}>
         <NavigationIcon name="plus" /><span>添加单词</span>
       </Link>
     </div>

@@ -15,10 +15,10 @@ from urllib.parse import parse_qs, urlencode, urlparse
 import httpx
 
 import sync_storage as storage
+from compat import DRIVE_APP_ID as APP, DRIVE_BATCH_PREFIX
 
 SCOPE = "https://www.googleapis.com/auth/drive.appdata"
 API = "https://www.googleapis.com/drive/v3"
-APP = "drive-vocabulary-book-v1"
 MAX_BYTES = 8 * 1024 * 1024
 
 
@@ -118,10 +118,10 @@ class DriveSync:
                         binding = client["client_id"] + ":" + user["permissionId"]
                         with owner.auth_lock, owner.write_lock:
                             if cancelled.is_set():
-                                raise ValueError("本次授权已取消，请返回词汇本重新连接")
+                                raise ValueError("本次授权已取消，请返回 Vocove 重新连接")
                             data = storage.read(owner.data_path())
                             if data["_sync"]["account"] not in ("", binding):
-                                raise ValueError("此词库已绑定另一账号或 OAuth 客户端。请使用原账号和客户端，或为新账号指定新的 VOCAB_DATA_FILE")
+                                raise ValueError("此词库已绑定另一账号或 OAuth 客户端。请使用原账号和客户端，或为新账号指定新的 VOCOVE_DATA_FILE")
                             data["_sync"]["account"] = binding
                             if data["_sync"].get("transport") != "api:" + binding:
                                 data["_sync"]["uploaded"] = []
@@ -132,7 +132,7 @@ class DriveSync:
                             token["email"] = user.get("emailAddress", "Google Drive")
                             storage.atomic_write(owner.secrets_dir / "token.json", token)
                             owner.error = ""
-                        message = "Google Drive 连接成功。请返回词汇本，数据会自动同步。"
+                        message = "Google Drive 连接成功。请返回 Vocove，数据会自动同步。"
                     except Exception as exc:
                         message = safe_error(exc)
                         with owner.auth_lock:
@@ -144,7 +144,7 @@ class DriveSync:
                                 owner.auth_pending = False
                                 owner.authorization_url = ""
                             cancelled.set()
-                    payload = ("<!doctype html><meta charset='utf-8'><title>词汇本同步</title><p>" + html.escape(message) + "</p>").encode()
+                    payload = ("<!doctype html><meta charset='utf-8'><title>Vocove 同步</title><p>" + html.escape(message) + "</p>").encode()
                     self.send_response(200)
                     self.send_header("Content-Type", "text/html; charset=utf-8")
                     self.send_header("Content-Length", str(len(payload)))
@@ -225,7 +225,7 @@ class DriveSync:
                     pass
             identity = json.loads(manifest.read_text(encoding="utf-8"))
             if identity.get("app") != APP or not identity.get("library_id"):
-                raise ValueError("所选文件夹不是兼容的词汇本同步目录")
+                raise ValueError("所选文件夹不是兼容的 Vocove 同步目录")
             previous = self.folder_settings()
             data = storage.read(self.data_path())
             if previous.get("library_id") != identity["library_id"] or not previous.get("enabled"):
@@ -341,7 +341,7 @@ class DriveSync:
                         raise ValueError("待同步变更过大，请缩短单词内容")
                     digest = hashlib.sha256(payload).hexdigest()
                     boundary = secrets.token_hex(24)
-                    metadata = json.dumps({"name": f"vocabulary-{digest}.json", "parents": ["appDataFolder"],
+                    metadata = json.dumps({"name": f"{DRIVE_BATCH_PREFIX}{digest}.json", "parents": ["appDataFolder"],
                                            "mimeType": "application/json", "appProperties": {"app": APP}}).encode()
                     body = (f"--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n".encode() + metadata
                             + f"\r\n--{boundary}\r\nContent-Type: application/json\r\n\r\n".encode() + payload
@@ -386,7 +386,7 @@ class DriveSync:
             meta = storage.read(self.data_path())["_sync"]
             seen = set(meta.get("downloaded_files", []))
         # Files are immutable and named by their content; cloud conflict copies deduplicate by op ID.
-        for file in sorted(root.glob("vocabulary-*.json")):
+        for file in sorted(root.glob(f"{DRIVE_BATCH_PREFIX}*.json")):
             if file.name in seen:
                 continue
             if file.stat().st_size > MAX_BYTES:
@@ -414,7 +414,7 @@ class DriveSync:
             content = json.dumps(document, ensure_ascii=False, sort_keys=True).encode()
             if len(content) > MAX_BYTES:
                 raise ValueError("待同步变更过大，请缩短单词内容")
-            name = "vocabulary-" + hashlib.sha256(content).hexdigest() + ".json"
+            name = DRIVE_BATCH_PREFIX + hashlib.sha256(content).hexdigest() + ".json"
             file = root / name
             # Unique temporary names avoid two desktop writers colliding during atomic replace.
             temp = root / (name + "." + secrets.token_hex(8) + ".tmp")

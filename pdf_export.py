@@ -1,6 +1,5 @@
 """词汇表 PDF 排版及 Unicode 字体校验，与 Web/API 层独立。"""
 import html as html_mod
-import os
 import string
 from pathlib import Path
 from typing import Optional
@@ -8,8 +7,10 @@ from typing import Optional
 from fontTools.ttLib import TTFont, TTLibError
 from fpdf import FPDF
 
+from compat import getenv
 
-CJK_FONT_ENV = "VOCABULARY_CJK_FONT"
+
+CJK_FONT_ENV = "VOCOVE_CJK_FONT"
 _MACOS_CJK_FONT = Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf")
 DEFAULT_CJK_FONT_PATH = str(_MACOS_CJK_FONT) if _MACOS_CJK_FONT.is_file() else None
 
@@ -29,7 +30,7 @@ def _font_path(value: str) -> Path:
 
 def resolve_cjk_font(default_path: Optional[str] = DEFAULT_CJK_FONT_PATH) -> Optional[str]:
     """显式配置优先；没有 Unicode 字体时仍允许内置字体能覆盖的内容。"""
-    configured = os.environ.get(CJK_FONT_ENV, "").strip()
+    configured = getenv(CJK_FONT_ENV, "").strip()
     if configured:
         return str(_font_path(configured))
     if default_path and Path(default_path).is_file():
@@ -58,7 +59,7 @@ def _validate_font(words: list[dict], use_cjk: bool, font_path: Optional[str]) -
             if "fvar" in font:
                 raise PdfExportError(f"{CJK_FONT_ENV} 不支持可变字体，请选择静态 TTF/OTF 字体")
             cmap = font.getBestCmap() or {}
-            required = text + string.printable + "·词汇笔记本导出日期共个单词"
+            required = text + string.printable + "·导出日期共个单词"
             missing = {char for char in required if not char.isspace() and ord(char) not in cmap}
     except PdfExportError:
         raise
@@ -70,7 +71,7 @@ def _validate_font(words: list[dict], use_cjk: bool, font_path: Optional[str]) -
 
 
 def _build_pdf(words: list[dict], today: str, use_cjk: bool, cjk_font_path: Optional[str]) -> bytes:
-    """渲染词汇笔记本 PDF：密集表格布局，~20 词/页。
+    """渲染 Vocove PDF：密集表格布局，~20 词/页。
 
     设计: Scholar's Compact
     - 顶栏: 标题 + 日期 + 计数 + 双线分割
@@ -149,14 +150,14 @@ def _build_pdf(words: list[dict], today: str, use_cjk: bool, cjk_font_path: Opti
         pdf.set_xy(M_L, y)
         pdf.set_font(serif, "B", 14)
         pdf.set_text_color(*C_TITLE)
-        title = "VOCABULARY NOTEBOOK"
+        title = "Vocove"
         pdf.cell(80, 6.5, title)
         # 副标题（中文）
         if use_cjk:
             pdf.set_xy(M_L, y + 6.5)
             pdf.set_font(sans, "", 8.5)
             pdf.set_text_color(*C_META)
-            pdf.cell(80, 4, "词 汇 笔 记 本 · 导 出")
+            pdf.cell(80, 4, "Vocove · 导 出")
         # 元信息右对齐
         pdf.set_xy(M_L, y)
         pdf.set_font(mono, "", 8)
@@ -276,7 +277,7 @@ def _build_pdf(words: list[dict], today: str, use_cjk: bool, cjk_font_path: Opti
         pdf.set_xy(M_L, pdf.h - M_B + 4)
         pdf.set_font(sans if use_cjk else "Helvetica", "", 7.5)
         pdf.set_text_color(*C_META)
-        left = "Vocab Notebook"
+        left = "Vocove"
         right = f"{pdf.page_no()} / {{nb}}"
         pdf.cell(CONTENT_W / 2, 4, left)
         pdf.cell(CONTENT_W / 2, 4, right, align="R")

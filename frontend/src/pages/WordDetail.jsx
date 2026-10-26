@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { fetchWord, updateWord, deleteWord } from '../api'
 import { useNotebooks } from '../useNotebooks'
+import { isShortcutEvent } from '../lib/keyboard'
 
 export default function WordDetail() {
   const { id } = useParams()
@@ -21,6 +22,8 @@ export default function WordDetail() {
   const { notebooks, loading: booksLoading, error: booksError, refresh: refreshBooks } = useNotebooks()
   const editButtonRef = useRef(null)
   const modalRef = useRef(null)
+  const composingRef = useRef(false)
+  const compositionSubmitRef = useRef(false)
 
   useEffect(() => {
     let active = true
@@ -49,6 +52,8 @@ export default function WordDetail() {
   }, [id])
 
   function startEdit() {
+    composingRef.current = false
+    compositionSubmitRef.current = false
     setEditWord(word.word)
     setEditDef(word.definition)
     setEditBook(word.notebook_id || 'default')
@@ -64,10 +69,10 @@ export default function WordDetail() {
 
   function handleModalKey(event) {
     event.stopPropagation()
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' && !composingRef.current && isShortcutEvent(event)) {
       event.preventDefault()
       closeEdit()
-    } else if (event.key === 'Tab') {
+    } else if (event.key === 'Tab' && !event.defaultPrevented && !event.ctrlKey && !event.metaKey && !event.altKey) {
       const controls = modalRef.current?.querySelectorAll('input:not(:disabled), select:not(:disabled), button:not(:disabled)')
       if (!controls?.length) return
       const first = controls[0]
@@ -77,8 +82,20 @@ export default function WordDetail() {
     }
   }
 
+  function handleFormKey(event) {
+    const composing = composingRef.current || event.nativeEvent?.isComposing || event.nativeEvent?.keyCode === 229
+    // 候选确认保持原生行为，隐式保存留到提交事件中拦截。
+    if (event.key === 'Enter' && composing) {
+      compositionSubmitRef.current = true
+      return
+    }
+    if (!composing) compositionSubmitRef.current = false
+    if (event.key === 'Enter' && event.repeat) event.preventDefault()
+  }
+
   async function handleEdit(e) {
     e.preventDefault()
+    if (composingRef.current || compositionSubmitRef.current) return
     if (saving || booksLoading || booksError || !notebooks.some(book => book.id === editBook)) return
     setSaving(true)
     setEditError('')
@@ -148,7 +165,12 @@ export default function WordDetail() {
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) closeEdit() }}>
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="edit-word-heading" ref={modalRef} onKeyDown={handleModalKey}>
             <h2 id="edit-word-heading">编辑单词</h2>
-            <form onSubmit={handleEdit}>
+            <form onSubmit={handleEdit}
+              onKeyDown={handleFormKey}
+              onKeyUp={event => { if (event.key === 'Enter') compositionSubmitRef.current = false }}
+              onCompositionStart={() => { composingRef.current = true; compositionSubmitRef.current = false }}
+              onCompositionEnd={() => { composingRef.current = false }}
+              onBlur={() => { composingRef.current = false; compositionSubmitRef.current = false }}>
               <div className="form-group">
                 <label htmlFor="edit-word">单词</label>
                 <input id="edit-word" type="text" value={editWord} onChange={e => setEditWord(e.target.value)} autoFocus required disabled={saving} />

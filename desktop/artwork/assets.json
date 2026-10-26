@@ -1,0 +1,36 @@
+{
+  "palette": {
+    "charcoal": "#1a1817",
+    "surface": "#242220",
+    "gold": "#d4a853",
+    "paper": "#f5f0e8"
+  },
+  "applicationIcon": {
+    "brand": "Vocove",
+    "preservation": "Existing icon master and exported icon pixels retained unchanged during the brand rename.",
+    "design": "Ivory tile with a charcoal folded-page V and one ochre page fold",
+    "source": "icon-master.png",
+    "prompt": "icon-prompt.txt",
+    "method": "Built-in image_gen; PNG resized with macOS sips; native formats exported with the locked electron-builder icon converter",
+    "outputs": ["../resources/icon.png", "../resources/icon.icns", "../resources/icon.ico"],
+    "pngSize": [1024, 1024],
+    "icoSizes": [16, 24, 32, 48, 64, 128, 256]
+  },
+  "macInstaller": {
+    "source": "installers/dmg-background.svg",
+    "outputs": ["../resources/background.png", "../resources/background@2x.png"],
+    "size": [540, 380],
+    "retinaSize": [1080, 760],
+    "appCenter": [150, 200],
+    "applicationsCenter": [390, 200],
+    "iconSize": 80
+  },
+  "windowsInstaller": {
+    "sources": ["installers/nsis-header.svg", "installers/nsis-sidebar.svg"],
+    "outputs": ["../resources/installerHeader.bmp", "../resources/installerSidebar.bmp"],
+    "headerSize": [150, 57],
+    "sidebarSize": [164, 314],
+    "bitmapDepth": 24,
+    "reuseForUninstaller": true
+  }
+}

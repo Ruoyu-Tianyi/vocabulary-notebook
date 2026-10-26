@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { shuffle } from '../lib/shuffle'
+import { getReviewShortcutAction } from '../lib/keyboard'
+import { getGlobalShortcutAction } from '../lib/globalShortcuts'
 
 export default function AllWordsReview({ words, notebookNames }) {
   const [order, setOrder] = useState('alpha')
@@ -8,6 +10,9 @@ export default function AllWordsReview({ words, notebookNames }) {
   const [flipped, setFlipped] = useState(false)
   const [done, setDone] = useState(false)
   const actionsRef = useRef(null)
+  const cardRef = useRef(null)
+  const completedRef = useRef(null)
+  const restoreFocusRef = useRef(false)
   const answerId = useId()
 
   const deck = useMemo(() => {
@@ -24,6 +29,16 @@ export default function AllWordsReview({ words, notebookNames }) {
   const current = deck[index]
 
   useEffect(() => {
+    if (!restoreFocusRef.current) return
+    restoreFocusRef.current = false
+    const active = document.activeElement
+    const inReview = active === document.body || cardRef.current?.contains(active) || actionsRef.current?.contains(active)
+    if (!inReview || document.querySelector('[aria-modal="true"], dialog[open]')) return
+    if (done) completedRef.current?.focus()
+    else cardRef.current?.focus()
+  }, [current, done])
+
+  useEffect(() => {
     if (flipped) {
       const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
       actionsRef.current?.scrollIntoView({ behavior, block: 'nearest' })
@@ -32,12 +47,14 @@ export default function AllWordsReview({ words, notebookNames }) {
 
   const goPrevious = useCallback(() => {
     if (index <= 0) return
+    restoreFocusRef.current = true
     setIndex(previous => previous - 1)
     setFlipped(false)
   }, [index])
 
   const goNext = useCallback(() => {
     if (!flipped || !current) return
+    restoreFocusRef.current = true
     if (index + 1 >= deck.length) {
       setDone(true)
       return
@@ -47,6 +64,7 @@ export default function AllWordsReview({ words, notebookNames }) {
   }, [current, deck.length, flipped, index])
 
   const restart = useCallback(() => {
+    restoreFocusRef.current = true
     if (order === 'random') setRandomSeed(seed => seed + 1)
     setIndex(0)
     setFlipped(false)
@@ -55,26 +73,16 @@ export default function AllWordsReview({ words, notebookNames }) {
 
   useEffect(() => {
     function handleKey(event) {
-      if (done || event.defaultPrevented || event.isComposing) return
-      const tagName = event.target?.tagName
-      if (['INPUT', 'TEXTAREA', 'SELECT', 'A', 'SUMMARY'].includes(tagName) || event.target?.isContentEditable) return
-      if (event.ctrlKey || event.metaKey || event.altKey) return
-
-      if ((event.key === ' ' || event.key === 'Enter') && current && !flipped) {
-        if (tagName === 'BUTTON') return
-        event.preventDefault()
-        setFlipped(true)
-      } else if (event.key === 'ArrowLeft') {
-        event.preventDefault()
-        goPrevious()
-      } else if (event.key === 'ArrowRight' && flipped) {
-        event.preventDefault()
-        goNext()
-      }
+      const action = getReviewShortcutAction(event, { mode: 'all', hasCard: Boolean(current), flipped, hasPrevious: index > 0, done })
+      if (!action) return
+      event.preventDefault()
+      if (action.type === 'reveal') setFlipped(true)
+      else if (action.type === 'previous') goPrevious()
+      else if (action.type === 'next') goNext()
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [current, done, flipped, goNext, goPrevious])
+  }, [current, done, flipped, goNext, goPrevious, index])
 
   if (done) {
     return (
@@ -82,7 +90,7 @@ export default function AllWordsReview({ words, notebookNames }) {
         <div className="srs-done-mark">✓</div>
         <h2>全部浏览完成</h2>
         <p>本轮共翻阅 {deck.length} 个单词，不影响每日复习计划。</p>
-        <button type="button" className="btn btn-primary" onClick={restart}>
+        <button type="button" className="btn btn-primary" ref={completedRef} onClick={restart}>
           重新开始
         </button>
       </section>
@@ -103,7 +111,7 @@ export default function AllWordsReview({ words, notebookNames }) {
   return (
     <div className="srs-container all-review-container">
       <div className="all-review-toolbar">
-        <div className="order-switch" role="group" aria-label="单词顺序" onKeyDown={event => { if (!['/', '?'].includes(event.key)) event.stopPropagation() }}>
+        <div className="order-switch" role="group" aria-label="单词顺序" onKeyDown={event => { if (!getGlobalShortcutAction(event)) event.stopPropagation() }}>
           <button
             type="button"
             aria-pressed={order === 'alpha'}
@@ -122,7 +130,7 @@ export default function AllWordsReview({ words, notebookNames }) {
           </button>
         </div>
         <div className="srs-progress">
-          第 {index + 1} / {deck.length} 个 · 空格翻面 · ← → 切换
+          第 {index + 1} / {deck.length} 个 · Space / Enter 显示答案 · ← 上一个 · → 下一个（先显示答案）
         </div>
       </div>
       {notebookNames && <div className="srs-progress" aria-live="polite">单词本：{notebookNames[current.notebook_id || 'default'] || '加载中…'}</div>}
@@ -130,6 +138,9 @@ export default function AllWordsReview({ words, notebookNames }) {
       <button
         type="button"
         className="flashcard"
+        ref={cardRef}
+        data-review-shortcuts
+        aria-keyshortcuts="Space Enter"
         onClick={() => !flipped && setFlipped(true)}
         aria-label={flipped ? `${current.word}，答案已展开` : `单词 ${current.word}，点击查看释义`}
         aria-describedby={flipped ? answerId : undefined}
@@ -142,7 +153,7 @@ export default function AllWordsReview({ words, notebookNames }) {
           <span className="flashcard-front" aria-hidden={flipped}>
             <span className="word-display">{current.word}</span>
             {current.phonetic && <span className="phonetic-display">{current.phonetic}</span>}
-            <span className="flip-hint">点击或按空格查看答案</span>
+            <span className="flip-hint">点击或按 Space / Enter 显示答案</span>
           </span>
           <span className="flashcard-back" id={answerId} aria-hidden={!flipped}>
             <span className="word-display">{current.word}</span>
@@ -153,11 +164,12 @@ export default function AllWordsReview({ words, notebookNames }) {
         </span>
       </button>
 
-      <div ref={actionsRef} className="all-review-actions">
+      <div ref={actionsRef} className="all-review-actions" data-review-shortcuts>
         <button
           type="button"
           className="btn btn-secondary"
           onClick={goPrevious}
+          aria-keyshortcuts="ArrowLeft"
           disabled={index === 0}
         >
           ← 上一个
@@ -166,6 +178,7 @@ export default function AllWordsReview({ words, notebookNames }) {
           type="button"
           className="btn btn-primary"
           onClick={goNext}
+          aria-keyshortcuts="ArrowRight"
           disabled={!flipped}
         >
           {index + 1 >= deck.length ? '完成本轮' : '下一个 →'}

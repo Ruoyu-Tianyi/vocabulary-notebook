@@ -1,0 +1,97 @@
+name: Desktop packages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            label: macOS-arm64
+          - os: macos-15-intel
+            label: macOS-x64
+          - os: windows-2025
+            label: Windows-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: |
+            requirements-desktop.txt
+            requirements-dev.txt
+            requirements.txt
+            constraints.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            desktop/package-lock.json
+      - run: python -m venv .venv-desktop
+      - name: Locate isolated Python
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            echo "VOCOVE_DESKTOP_PYTHON=$GITHUB_WORKSPACE/.venv-desktop/Scripts/python.exe" >> "$GITHUB_ENV"
+          else
+            echo "VOCOVE_DESKTOP_PYTHON=$GITHUB_WORKSPACE/.venv-desktop/bin/python" >> "$GITHUB_ENV"
+          fi
+      - name: Install backend build dependencies
+        shell: bash
+        run: '"$VOCOVE_DESKTOP_PYTHON" -m pip install -r requirements-desktop.txt -r requirements-dev.txt'
+      - name: Check backend on the target platform
+        shell: bash
+        run: |
+          "$VOCOVE_DESKTOP_PYTHON" -m ruff check .
+          "$VOCOVE_DESKTOP_PYTHON" -m pytest -q
+      - run: npm --prefix frontend ci
+      - run: npm --prefix frontend run check
+      - run: npm --prefix desktop ci
+      - run: npm --prefix desktop test
+      - run: npm --prefix desktop run dist
+      - name: Smoke test the packaged application
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            "desktop/release/win-unpacked/Vocove.exe" --smoke-test
+          else
+            APP=$(find desktop/release -maxdepth 3 -name 'Vocove.app' -print -quit)
+            "$APP/Contents/MacOS/Vocove" --smoke-test
+          fi
+      - name: Verify Windows installation and uninstallation
+        if: runner.os == 'Windows'
+        timeout-minutes: 8
+        run: node desktop/scripts/test-windows-installer.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vocove-${{ matrix.label }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            desktop/release/*.dmg
+            desktop/release/*.zip
+            desktop/release/*.exe
+            desktop/release/*.yml
+            desktop/release/*.blockmap
+            desktop/release/*.sha256

@@ -1,34 +1,46 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { getGlobalShortcutAction, shortcutDestination } from './lib/globalShortcuts'
 
 /**
  * 全局键盘快捷键。
- * - `/` 聚焦 searchInputRef.current（如果提供）
- * - `?` 切换帮助浮层（toggleHelp）
- * 输入框 / textarea 获得焦点时不触发，避免与文本编辑冲突。
+ * 跨页搜索等待列表挂载后再聚焦，避免快捷键只在列表页有效。
  */
 export function useGlobalShortcuts({ searchInputRef, toggleHelp }) {
-  useEffect(() => {
-    function handleKey(e) {
-      if (e.defaultPrevented || e.isComposing) return
-      // 输入态不抢键
-      const tag = e.target?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) {
-        return
-      }
-      // 已经按了修饰键的不抢（让浏览器 / 其他组件处理）
-      if (e.ctrlKey || e.metaKey || e.altKey) return
+  const location = useLocation()
+  const navigate = useNavigate()
+  const pendingSearch = useRef(false)
 
-      if (e.key === '/') {
-        if (!searchInputRef?.current) return
-        e.preventDefault()
-        searchInputRef?.current?.focus()
-        searchInputRef?.current?.select?.()
-      } else if (e.key === '?') {
-        e.preventDefault()
-        toggleHelp?.()
+  useEffect(() => {
+    if (!pendingSearch.current || location.pathname !== '/' || !searchInputRef.current) return
+    pendingSearch.current = false
+    searchInputRef.current.focus()
+    searchInputRef.current.select()
+  }, [location.pathname, location.search, searchInputRef])
+
+  useEffect(() => {
+    function handleKey(event) {
+      const action = getGlobalShortcutAction(event)
+      // 保存中禁用字段可能使焦点回到 body，弹窗仍应隔离页面操作。
+      if (!action || document.querySelector('[aria-modal="true"], dialog[open]')) return
+      event.preventDefault()
+      if (action === 'help') {
+        toggleHelp()
+      } else if (action === 'search') {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus()
+          searchInputRef.current.select()
+        } else {
+          pendingSearch.current = true
+          navigate(shortcutDestination(action, location.search))
+        }
+      } else if (location.pathname === '/word/new') {
+        document.getElementById('new-word')?.focus()
+      } else {
+        navigate(shortcutDestination(action, location.search))
       }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [searchInputRef, toggleHelp])
+  }, [location.pathname, location.search, navigate, searchInputRef, toggleHelp])
 }

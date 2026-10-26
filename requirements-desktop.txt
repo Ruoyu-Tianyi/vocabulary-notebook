@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# 只安装到独立打包环境，不改变网页运行环境。
+pyinstaller==6.22.3

@@ -1,8 +1,8 @@
 """Offline update snapshots. Does not contact Drive, generate content or change data."""
+from compat import getenv
 import argparse
 import hashlib
 import json
-import os
 import shutil
 import subprocess
 from datetime import datetime, timezone
@@ -91,7 +91,7 @@ def main():
         return
     config_file = project / "config.json"
     settings = json.loads(config_file.read_text(encoding="utf-8-sig")) if config_file.exists() else {}
-    data_file = Path(os.environ.get("VOCAB_DATA_FILE", "words.json"))
+    data_file = Path(getenv("VOCOVE_DATA_FILE", "words.json"))
     if not data_file.is_absolute():
         data_file = project / data_file
     secrets = Path(settings.get("sync", {}).get("credentials_dir", ".secrets"))

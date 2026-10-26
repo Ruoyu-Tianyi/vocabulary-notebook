@@ -8,6 +8,8 @@ import WordCard from '../components/WordCard'
 import ExportMenu from '../components/ExportMenu'
 import EnrichProgress from '../components/EnrichProgress'
 import NavigationIcon from '../components/NavigationIcon'
+import { readLegacyWordSort } from '../lib/compat'
+import { isShortcutEvent } from '../lib/keyboard'
 
 export default function WordList({ searchInputRef }) {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -31,12 +33,14 @@ export default function WordList({ searchInputRef }) {
   const [date, setDate] = useState('')
   const [sort, setSort] = useState(() => {
     try {
-      const saved = localStorage.getItem('vocabulary-word-sort')
-      return ['', 'created_desc', 'created_asc', 'alpha_asc', 'alpha_desc'].includes(saved) ? saved : 'created_desc'
+      const saved = localStorage.getItem('vocove-word-sort') ?? readLegacyWordSort(localStorage)
+      // 旧版默认顺序按添加时间升序展示，迁移时保留这一偏好。
+      if (saved === '') return 'created_asc'
+      return ['created_desc', 'created_asc', 'alpha_asc', 'alpha_desc'].includes(saved) ? saved : 'created_desc'
     } catch { return 'created_desc' }
   })
   useEffect(() => {
-    try { localStorage.setItem('vocabulary-word-sort', sort) } catch { /* Storage may be unavailable. */ }
+    try { localStorage.setItem('vocove-word-sort', sort) } catch { /* Storage may be unavailable. */ }
   }, [sort])
   const [letter, setLetter] = useState('')
   const [availableLetters, setAvailableLetters] = useState([])
@@ -222,11 +226,18 @@ export default function WordList({ searchInputRef }) {
           ref={searchInputRef}
           type="text"
           aria-label="搜索英文单词或中文译文"
-          placeholder="搜索英文单词或中文译文，如：合同…"
+          aria-keyshortcuts="/ Escape"
+          placeholder="搜索英文单词或中文译文…"
           autoComplete="off"
           spellCheck={false}
           value={q}
           onChange={e => { setQ(e.target.value); setLetter(''); setPage(1) }}
+          onKeyDown={event => {
+            if (event.key !== 'Escape' || !isShortcutEvent(event)) return
+            event.preventDefault()
+            if (q) { setQ(''); setPage(1) }
+            else event.currentTarget.blur()
+          }}
         />
         {q ? <button type="button" className="search-clear" aria-label="清除搜索" onClick={() => { setQ(''); setPage(1); searchInputRef.current?.focus() }}><NavigationIcon name="close" /></button> : <kbd aria-hidden="true">/</kbd>}
       </div>
@@ -246,7 +257,6 @@ export default function WordList({ searchInputRef }) {
         >
           <option value="created_desc">添加时间：最新在前</option>
           <option value="created_asc">添加时间：最早在前</option>
-          <option value="">默认顺序</option>
           <option value="alpha_asc">首字母 A→Z</option>
           <option value="alpha_desc">首字母 Z→A</option>
         </select>
@@ -376,7 +386,7 @@ export default function WordList({ searchInputRef }) {
                   onChange={e => setPageInput(e.target.value.replace(/\D/g, ''))}
                   onBlur={e => commitPageInput(e.target.value)}
                   onKeyDown={e => {
-                    if (e.key === 'Enter') {
+                    if (e.key === 'Enter' && isShortcutEvent(e)) {
                       e.preventDefault()
                       e.currentTarget.blur()
                     }

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useId } from 'react'
 import { exportUrl } from '../api'
 import NavigationIcon from './NavigationIcon'
+import { isShortcutEvent } from '../lib/keyboard'
 
 export default function ExportMenu({ q, date, sort, letter, notebook_id }) {
   const [open, setOpen] = useState(false)
@@ -27,7 +28,7 @@ export default function ExportMenu({ q, date, sort, letter, notebook_id }) {
 
   return (
     <div className="export-wrapper" ref={ref} onKeyDown={event => {
-      if (event.key === 'Escape' && open) {
+      if (event.key === 'Escape' && open && isShortcutEvent(event)) {
         event.preventDefault()
         event.stopPropagation()
         setOpen(false)

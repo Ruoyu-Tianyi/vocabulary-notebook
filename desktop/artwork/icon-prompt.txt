@@ -1,0 +1,13 @@
+Generator: built-in image_gen (transparent_background=true)
+Selected output: icon-master.png
+Brand update: Vocove; the existing icon master and exported icon pixels are preserved, with no regeneration.
+Direction: ivory tile, charcoal V formed from folded pages, one ochre page fold.
+Reference lock: existing project palette; Refero bundled icons/color guidance (live style search unavailable); strong silhouette, generous negative space, no material simulation.
+
+Use case: logo-brand.
+Asset type: final production desktop application icon for Vocove, a focused personal vocabulary learning app.
+Create one new original icon, not a redesign sheet or mockup. A precise contemporary flat graphic app icon: a warm ivory rounded-square tile (#f5f0e8), with a large custom charcoal (#242220) abstract V emblem. The V is constructed from two broad clean folded-page ribbons, like two simple leaves of a notebook meeting at a low central point, with a single small muted ochre (#d4a853) turned-over page flap at the upper-right end. The silhouette should read immediately as a V and only secondarily as a page/book idea. The asymmetric ochre fold provides the only accent. It should feel like a deliberately crafted typographic monogram with coherent geometric proportions, balanced negative space, and softened precise corners. Use no readable word or lettering other than the emblem's V shape.
+Flat vector-like finish: solid color masses, smooth clean contours, no texture, no metallic gold, no embossing, no bevel, no faux leather, no glass, no gradients, no 3D perspective. Do not draw a literal open book, page lines, a checkmark, stacked books, pencil, badge, or sparkles.
+Composition: square 1024x1024 canvas, icon front-facing and optically centered. Ivory rounded-square tile occupies 84 percent of canvas with equal transparent safe margins. Main mark occupies about 53 percent of entire canvas width and 49 percent of its height; substantial strokes and generous open negative space that remain crisp at 32px. Rounded square corners are continuous and calm, not circular or pill-shaped. Truly transparent pixels outside the tile, no opaque canvas, no checkerboard, no cast shadow outside the tile. No border, no typography, no watermark, no additional objects. Deliver exactly one finished ready-to-use icon.
+
+The packaged PNG is resampled to 1024x1024 with macOS sips; ICNS and ICO are produced from that PNG using the project's locked electron-builder icon converter. Installer SVGs use a flat rendition of the same V and page-fold mark.

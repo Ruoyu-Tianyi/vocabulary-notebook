@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="540" height="380" viewBox="0 0 540 380" fill="none">
+  <title>Vocove macOS installer background</title>
+  <desc>Editable 540 by 380 background. Finder supplies the app and Applications icons, centered at 150,200 and 390,200. The filename area around y=260 is intentionally empty.</desc>
+  <rect width="540" height="380" fill="#f5f0e8"/>
+  <path d="M44 28H78" stroke="#d4a853" stroke-width="2"/>
+  <text x="270" y="68" fill="#1a1817" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="29" letter-spacing="-.7">Vocove</text>
+  <text x="270" y="91" fill="#242220" fill-opacity=".62" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="9" letter-spacing="2.6">DESKTOP</text>
+  <path d="M44 116H496" stroke="#242220" stroke-opacity=".12"/>
+  <!-- Finder 图标及文件名由安装卷自身提供，此区只保留导向箭头。 -->
+  <path d="M234 200H306M299 194L306 200L299 206" stroke="#d4a853" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M44 278H496" stroke="#242220" stroke-opacity=".12"/>
+  <text x="270" y="300" fill="#242220" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11.5" letter-spacing=".12">Drag to Applications to install</text>
+  <path d="M462 316H496" stroke="#d4a853" stroke-width="2"/>
+</svg>

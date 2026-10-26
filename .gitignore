@@ -1,4 +1,7 @@
 .venv/
+.venv-desktop/
+desktop/build/
+desktop/release/
 __pycache__/
 *.pyc
 .pytest_cache/

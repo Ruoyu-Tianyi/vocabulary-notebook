@@ -1,0 +1,29 @@
+{
+  "name": "vocove-desktop",
+  "productName": "Vocove",
+  "version": "1.3.0",
+  "private": true,
+  "description": "Vocove 本地优先的英文词汇学习桌面应用",
+  "author": "Eric Zhou",
+  "license": "MIT",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.cjs",
+    "smoke": "electron . --smoke-test",
+    "build:backend": "node scripts/build.cjs --backend-only",
+    "pack": "node scripts/build.cjs --dir",
+    "dist": "node scripts/build.cjs"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0"
+  },
+  "engines": {
+    "node": "^22.13.0 || >=24.0.0"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.11",
+    "semver": "7.8.5"
+  }
+}

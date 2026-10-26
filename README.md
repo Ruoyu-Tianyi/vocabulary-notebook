@@ -2,7 +2,7 @@
 
 **本机运行词汇本，DeepSeek API 补全，Google Drive 同步词汇与学习记录。** 支持将新电脑作为日常主力、旧电脑作为备用，按法律、金融等课程创建独立单词本。
 
-基于 **[Eric Zhou 的 Vocabulary Notebook](https://github.com/Eric-Zhou-0302/vocabulary-notebook)** 开发，保留原项目提交历史与 MIT 版权声明。原项目提供 FastAPI、React、AI 补全、FSRS 复习及导出；本项目扩展云同步、多单词本、逐次复习记录与冲突合并。[来源说明](NOTICE) · [原 README](docs/UPSTREAM_README.md) · [MIT License](LICENSE)
+基于 **[Eric Zhou 的 Vocove](https://github.com/Eric-Zhou-0302/vocove)** 开发，保留原项目提交历史与 MIT 版权声明。原项目提供 FastAPI、React、AI 补全、FSRS 复习及导出；本项目扩展云同步、多单词本、逐次复习记录与冲突合并。[来源说明](NOTICE) · [原 README](docs/UPSTREAM_README.md) · [MIT License](LICENSE)
 
 当前维护仓库为 **[Ruoyu-Tianyi/vocabulary-notebook](https://github.com/Ruoyu-Tianyi/vocabulary-notebook)**，它是原项目的 fork。`main` 提供完整云端版本；向原作者贡献的功能使用从原项目建立的独立分支。旧仓库 [drive-vocabulary-book](https://github.com/Ruoyu-Tianyi/drive-vocabulary-book) 保留历史并提示迁移。迁移只改变程序更新来源，沿用原来的安装目录、Drive 文件夹、词库、学习记录及本机密钥。
 
@@ -297,3 +297,7 @@ npm run build
 ## 2026-10-25 上游同步
 
 整合上游 v1.2.0 的单词本管理、新导航、同步可靠性、复习顺序、PDF 导出和维护检查。继续保留本分支的 DeepSeek 本机密钥存储、课程 AI 上下文、中文搜索、一键启动及安全备份更新。运行要求已调整为 Python 3.11+；更新时先停服备份，再安装依赖并校验数据。
+
+## 上游 v1.3.0 整合
+
+已同步 Vocove 的响应式布局、系统主题、键盘帮助及独立桌面应用源码。现有服务器仍使用原安装目录和 Windows 启动器，手机入口不变。上游桌面版采用独立数据目录，不能把安装官方桌面版当成此 fork 的就地更新；官方应用内更新也不会保留本 fork 的私人网关功能。继续使用本文的 Agent 更新流程。

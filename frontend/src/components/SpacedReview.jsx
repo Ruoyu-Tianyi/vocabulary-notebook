@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { getReviewShortcutAction } from '../lib/keyboard'
 
 const RATINGS = [
   { value: 1, label: '重来', className: 'rating-again' },
@@ -14,17 +15,32 @@ export default function SpacedReview({ cards, onRate, onReload, notebookNames })
   const [done, setDone] = useState(false)
   const [summary, setSummary] = useState({ ratings: 0, newWords: 0, again: 0 })
   const ratingGridRef = useRef(null)
+  const cardRef = useRef(null)
+  const completedRef = useRef(null)
+  const restoreFocusRef = useRef(false)
+  const submittingRef = useRef(false)
   const answerId = useId()
 
   useEffect(() => {
     setQueue(cards)
     setFlipped(false)
     setSubmitting(false)
+    submittingRef.current = false
     setDone(false)
     setSummary({ ratings: 0, newWords: 0, again: 0 })
   }, [cards])
 
   const current = queue[0]
+
+  useEffect(() => {
+    if (!restoreFocusRef.current) return
+    restoreFocusRef.current = false
+    const active = document.activeElement
+    const inReview = active === document.body || cardRef.current?.contains(active) || ratingGridRef.current?.contains(active)
+    if (!inReview || document.querySelector('[aria-modal="true"], dialog[open]')) return
+    if (done) completedRef.current?.focus()
+    else cardRef.current?.focus()
+  }, [current, done])
 
   useEffect(() => {
     if (flipped) {
@@ -34,13 +50,15 @@ export default function SpacedReview({ cards, onRate, onReload, notebookNames })
   }, [flipped])
 
   const handleRate = useCallback(async rating => {
-    if (!current || !flipped || submitting) return
+    if (!current || !flipped || submittingRef.current) return
+    submittingRef.current = true
     setSubmitting(true)
     try {
       const result = await onRate(current.id, rating)
       const rest = queue.slice(1)
       // 使用服务端返回的最新卡片状态，避免“重来”后沿用旧间隔预览。
       if (rating === 1) rest.push(result.card)
+      restoreFocusRef.current = true
       setQueue(rest)
       setSummary(previous => ({
         ratings: previous.ratings + 1,
@@ -53,28 +71,22 @@ export default function SpacedReview({ cards, onRate, onReload, notebookNames })
       // 父组件负责展示错误；卡片留在原位，允许用户重试。
       return
     } finally {
+      submittingRef.current = false
       setSubmitting(false)
     }
-  }, [current, flipped, onRate, queue, submitting])
+  }, [current, flipped, onRate, queue])
 
   useEffect(() => {
     function handleKey(event) {
-      if (done || event.defaultPrevented || event.isComposing) return
-      const tagName = event.target?.tagName
-      if (['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT', 'A', 'SUMMARY'].includes(tagName) || event.target?.isContentEditable) return
-      if (event.ctrlKey || event.metaKey || event.altKey) return
-
-      if ((event.key === ' ' || event.key === 'Enter') && current && !flipped) {
-        event.preventDefault()
-        setFlipped(true)
-      } else if (flipped && ['1', '2', '3', '4'].includes(event.key)) {
-        event.preventDefault()
-        handleRate(Number(event.key))
-      }
+      const action = getReviewShortcutAction(event, { mode: 'daily', hasCard: Boolean(current), flipped, submitting, done })
+      if (!action) return
+      event.preventDefault()
+      if (action.type === 'reveal') setFlipped(true)
+      else if (action.type === 'rate') handleRate(action.rating)
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [current, done, flipped, handleRate])
+  }, [current, done, flipped, handleRate, submitting])
 
   if (done) {
     return (
@@ -86,7 +98,7 @@ export default function SpacedReview({ cards, onRate, onReload, notebookNames })
           {summary.newWords > 0 && ` · 新学 ${summary.newWords} 个`}
           {summary.again > 0 && ` · 重来 ${summary.again} 次`}
         </p>
-        <button type="button" className="btn btn-primary" onClick={onReload}>
+        <button type="button" className="btn btn-primary" ref={completedRef} onClick={onReload}>
           查看下一批
         </button>
       </section>
@@ -98,13 +110,16 @@ export default function SpacedReview({ cards, onRate, onReload, notebookNames })
   return (
     <div className="srs-container">
       <div className="srs-progress" aria-live="polite">
-        本轮剩余 {queue.length} 张 · 空格翻面 · 1–4 评分
+        本轮剩余 {queue.length} 张 · Space / Enter 显示答案 · 1–4 评分
       </div>
       {notebookNames && <div className="srs-progress" aria-live="polite">单词本：{notebookNames[current.notebook_id || 'default'] || '加载中…'}</div>}
 
       <button
         type="button"
         className="flashcard"
+        ref={cardRef}
+        data-review-shortcuts
+        aria-keyshortcuts="Space Enter"
         onClick={() => !flipped && setFlipped(true)}
         aria-label={flipped ? `${current.word}，答案已展开` : `单词 ${current.word}，点击查看释义`}
         aria-describedby={flipped ? answerId : undefined}
@@ -118,7 +133,7 @@ export default function SpacedReview({ cards, onRate, onReload, notebookNames })
             {current.is_new && <span className="card-kicker">新词</span>}
             <span className="word-display">{current.word}</span>
             {current.phonetic && <span className="phonetic-display">{current.phonetic}</span>}
-            <span className="flip-hint">点击或按空格查看答案</span>
+            <span className="flip-hint">点击或按 Space / Enter 显示答案</span>
           </span>
           <span className="flashcard-back" id={answerId} aria-hidden={!flipped}>
             <span className="word-display">{current.word}</span>
@@ -131,6 +146,7 @@ export default function SpacedReview({ cards, onRate, onReload, notebookNames })
 
       <div
         ref={ratingGridRef}
+        data-review-shortcuts
         className={`srs-rating-grid ${flipped ? 'visible' : ''}`}
         aria-hidden={!flipped}
       >
@@ -140,6 +156,7 @@ export default function SpacedReview({ cards, onRate, onReload, notebookNames })
             type="button"
             className={`srs-rating-btn ${rating.className}`}
             onClick={() => handleRate(rating.value)}
+            aria-keyshortcuts={String(rating.value)}
             disabled={!flipped || submitting}
           >
             <span className="rating-label">{rating.value} · {rating.label}</span>

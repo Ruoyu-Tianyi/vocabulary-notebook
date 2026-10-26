@@ -20,5 +20,5 @@ def acquire(path: Path):
             fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError as exc:
         stream.close()
-        raise RuntimeError("这个本地词库已被另一个词汇本进程打开，请先关闭原窗口") from exc
+        raise RuntimeError("这个本地词库已被另一个 Vocove 进程打开，请先关闭原窗口") from exc
     return stream

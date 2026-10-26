@@ -5,6 +5,7 @@ import AllWordsReview from '../components/AllWordsReview'
 import SpacedReview from '../components/SpacedReview'
 import { useNotebooks } from '../useNotebooks'
 import { useTransientMessage } from '../useTransientMessage'
+import { getGlobalShortcutAction } from '../lib/globalShortcuts'
 import '../components/ReviewPolish.css'
 
 export default function Review() {
@@ -17,7 +18,7 @@ export default function Review() {
   return (
     <div className="review-page">
       <div className="review-controls">
-        <div className="review-mode-tabs" role="group" aria-label="复习模式" onKeyDown={event => { if (!['/', '?'].includes(event.key)) event.stopPropagation() }}>
+        <div className="review-mode-tabs" role="group" aria-label="复习模式" onKeyDown={event => { if (!getGlobalShortcutAction(event)) event.stopPropagation() }}>
           <button type="button" aria-pressed={mode === 'daily'} className={mode === 'daily' ? 'active' : ''} onClick={() => setMode('daily')}>
             今日复习
           </button>
