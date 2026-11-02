@@ -148,10 +148,11 @@ function installUpdates() {
     source = new WindowsUpdateSource(new NsisUpdater(), app.getVersion(), { quitEvents: autoUpdater })
   } else if (enabled) {
     const { net } = require('electron')
+    const { createUpdateFetch } = require('./lib/electron-update-fetch.cjs')
     const { GitHubDmgUpdateSource } = require('./lib/github-dmg-update.cjs')
     source = new GitHubDmgUpdateSource({
       currentVersion: app.getVersion(), arch: process.arch,
-      cacheDir: path.join(userData, 'updates'), fetchImpl: (...args) => net.fetch(...args),
+      cacheDir: path.join(userData, 'updates'), fetchImpl: createUpdateFetch(net),
     })
   }
   updates = new DesktopUpdates({

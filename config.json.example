@@ -1,8 +1,18 @@
 {
-  "provider": "deepseek",
+  "provider": "ollama",
+  "ollama": {
+    "url": "http://localhost:11434/api/generate",
+    "model": "gemma4:26b",
+    "timeout": 120,
+    "api_key": "",
+    "models": []
+  },
   "deepseek": {
-    "model": "deepseek-flash",
-    "api_key": ""
+    "api_key": "",
+    "model": "",
+    "base_url": "https://api.deepseek.com",
+    "timeout": 120,
+    "models": []
   },
   "srs": {
     "daily_new_limit": 20
@@ -10,5 +20,106 @@
   "sync": {
     "interval_seconds": 30,
     "credentials_dir": ".secrets"
+  },
+  "providers": {
+    "openai": {
+      "base_url": "https://api.openai.com/v1",
+      "model": "",
+      "api_key": "",
+      "timeout": 120,
+      "models": []
+    },
+    "anthropic": {
+      "base_url": "https://api.anthropic.com/v1",
+      "model": "",
+      "api_key": "",
+      "timeout": 120,
+      "models": []
+    },
+    "gemini": {
+      "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "model": "",
+      "api_key": "",
+      "timeout": 120,
+      "models": []
+    },
+    "qwen": {
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "model": "",
+      "api_key": "",
+      "timeout": 120,
+      "models": []
+    },
+    "moonshot": {
+      "base_url": "https://api.moonshot.cn/v1",
+      "model": "",
+      "api_key": "",
+      "timeout": 120,
+      "models": []
+    },
+    "zhipu": {
+      "base_url": "https://open.bigmodel.cn/api/paas/v4",
+      "model": "",
+      "api_key": "",
+      "timeout": 120,
+      "models": []
+    },
+    "siliconflow": {
+      "base_url": "https://api.siliconflow.cn/v1",
+      "model": "",
+      "api_key": "",
+      "timeout": 120,
+      "models": []
+    },
+    "openrouter": {
+      "base_url": "https://openrouter.ai/api/v1",
+      "model": "",
+      "api_key": "",
+      "timeout": 120,
+      "models": []
+    },
+    "groq": {
+      "base_url": "https://api.groq.com/openai/v1",
+      "model": "",
+      "api_key": "",
+      "timeout": 120,
+      "models": []
+    },
+    "mistral": {
+      "base_url": "https://api.mistral.ai/v1",
+      "model": "",
+      "api_key": "",
+      "timeout": 120,
+      "models": []
+    },
+    "together": {
+      "base_url": "https://api.together.ai/v1",
+      "model": "",
+      "api_key": "",
+      "timeout": 120,
+      "models": []
+    },
+    "fireworks": {
+      "base_url": "https://api.fireworks.ai/inference/v1",
+      "model": "",
+      "api_key": "",
+      "timeout": 120,
+      "models": []
+    },
+    "xai": {
+      "base_url": "https://api.x.ai/v1",
+      "model": "",
+      "api_key": "",
+      "timeout": 120,
+      "models": []
+    },
+    "custom": {
+      "base_url": "",
+      "model": "",
+      "api_key": "",
+      "timeout": 120,
+      "models": [],
+      "protocol": "openai"
+    }
   }
 }

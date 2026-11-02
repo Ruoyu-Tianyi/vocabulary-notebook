@@ -242,7 +242,7 @@ def test_import_portable_deleted_book_uses_fresh_identity(client):
     assert data["words"][0]["notebook_id"] == restored_book["id"]
 
 
-def test_same_spelling_in_two_books_generates_course_meaning_and_has_independent_review(client):
+def test_same_spelling_in_two_books_reuses_dictionary_but_has_independent_review(client):
     book = create_book(client)
     first = create_word(client, "bond")
     data = app.load_words()
@@ -254,11 +254,9 @@ def test_same_spelling_in_two_books_generates_course_meaning_and_has_independent
     assert response.status_code == 200
     second = response.json()["word"]
     assert second["id"] != first["id"] and second["notebook_id"] == book["id"]
-    assert second["definition"] == ""
-    assert second["phonetic"] == ""
-    assert second["example"] == ""
-    assert client.get("/api/review/stats", params={"notebook_id": book["id"]}).json()["new_remaining"] == 0
-    client.put(f"/api/words/{second['id']}", json={"definition": "n. 本课程的释义"})
+    assert second["definition"] == source["definition"]
+    assert second["phonetic"] == source["phonetic"]
+    assert second["example"] == source["example"]
     assert "srs" not in second and "review_history" not in second
     assert second["created_at"] != source["created_at"]
     assert client.get("/api/review/stats", params={"notebook_id": "default"}).json()["new_remaining"] == 0

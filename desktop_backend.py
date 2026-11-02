@@ -27,9 +27,9 @@ def prepare_environment() -> Path:
         raise RuntimeError("桌面前端资源缺失，请重新构建应用")
     data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     default_config = {
-        "provider": "deepseek",
+        "provider": "ollama",
         "ollama": {"url": "http://localhost:11434/api/generate", "model": "gemma4:26b"},
-        "deepseek": {"api_key": "", "model": "deepseek-flash"},
+        "deepseek": {"api_key": "", "model": ""},
         "srs": {"daily_new_limit": 20},
         "sync": {"interval_seconds": 30, "credentials_dir": ".secrets"},
     }

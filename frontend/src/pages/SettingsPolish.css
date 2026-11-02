@@ -97,3 +97,19 @@
   .sync-state-heading { gap: 10px; }
   .sync-page .sync-overview h3 { font-size: 17px; }
 }
+
+.provider-tabs { display: flex; gap: 4px; padding: 4px; margin-bottom: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; width: fit-content; }
+.provider-tabs button { border: 0; background: transparent; color: var(--text-dim); min-height: 42px; }
+.provider-tabs button[aria-pressed="true"] { background: var(--bg); color: var(--heading); box-shadow: 0 1px 4px #0002; }
+.model-settings select { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--heading); font: inherit; }
+.provider-advanced { margin: 24px 0; border-block: 1px solid var(--border); padding-block: 16px; }
+.provider-advanced summary { cursor: pointer; min-height: 32px; color: var(--text-dim); font-size: 14px; }
+.provider-advanced .form-group { margin-top: 18px; }
+.provider-inline { display: flex; align-items: stretch; gap: 10px; }
+.provider-inline input { min-width: 0; flex: 1; }
+.provider-inline button { flex-shrink: 0; }
+.provider-clear { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.model-settings.model-settings .provider-clear input { min-height: auto; width: auto; }
+.model-settings select:focus-visible, .provider-tabs button:focus-visible, .provider-advanced summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.model-settings code { overflow-wrap: anywhere; }
+@media (max-width: 480px) { .provider-inline { flex-direction: column; } }

@@ -44,7 +44,7 @@ def isolated(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("outcome", ["success", "empty", "rejected"])
 def test_preview_status_and_persisted_result_survive_missed_sse(isolated, monkeypatch, outcome):
-    async def enrich(_word, context=""):
+    async def enrich(_word):
         if outcome == "empty":
             return "", "", ""
         return "/test/", "n. 合同", "The contract is valid."

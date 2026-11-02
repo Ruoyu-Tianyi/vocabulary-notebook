@@ -58,7 +58,8 @@
 .notebooks-page .notebook-form { border-radius: 10px; padding: 24px; }
 .notebooks-page .notebook-form label { font-size: 13px; letter-spacing: normal; }
 .notebooks-page .notebook-form input,
-.notebooks-page .notebook-form textarea {
+.notebooks-page .notebook-form textarea,
+.notebooks-page .notebook-form select {
   padding: 12px 14px;
   border: 1px solid var(--border-light);
   border-radius: 7px;
@@ -119,3 +120,6 @@
   .word-new-form .btn-group .btn { flex: 1; padding-inline: 12px; }
   .word-new-shortcuts { display: none; }
 }
+
+.notebook-context-label { color: var(--accent-text); font-size: 13px; margin-top: 10px; }
+#notebook-context-help { color: var(--text-dim); font-size: 13px; line-height: 1.7; margin-top: 10px; }

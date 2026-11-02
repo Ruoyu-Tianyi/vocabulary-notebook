@@ -3,6 +3,7 @@ import { fetchNotebooks } from './api'
 
 export function useNotebooks() {
   const [notebooks, setNotebooks] = useState([])
+  const [contexts, setContexts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const requestId = useRef(0)
@@ -13,7 +14,10 @@ export function useNotebooks() {
     setError('')
     try {
       const result = await fetchNotebooks()
-      if (current === requestId.current) setNotebooks(result.notebooks)
+      if (current === requestId.current) {
+        setNotebooks(result.notebooks)
+        setContexts(result.contexts || [])
+      }
     } catch (requestError) {
       if (current === requestId.current) setError(requestError.message || '单词本加载失败')
     } finally {
@@ -32,7 +36,7 @@ export function useNotebooks() {
     }
   }, [refresh])
 
-  return { notebooks, loading, error, refresh }
+  return { notebooks, contexts, loading, error, refresh }
 }
 
 export default useNotebooks

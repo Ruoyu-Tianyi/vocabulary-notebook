@@ -4,4 +4,5 @@ ruff==0.17.2
 # Starlette TestClient 使用；业务网络请求仍由 httpx 负责。
 httpx2==2.12.0
 
+# Optional private gateway regression tests.
 -r requirements-remote.txt

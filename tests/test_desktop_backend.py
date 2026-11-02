@@ -41,7 +41,7 @@ def test_first_run_is_isolated_and_never_overwrites_configuration(desktop_enviro
     assert os.environ["VOCOVE_DATA_FILE"] == str(data / "words.json")
     config_path = data / "config.json"
     settings = json.loads(config_path.read_text(encoding="utf-8"))
-    assert settings["provider"] == "deepseek"
+    assert settings["provider"] == "ollama"
     assert settings["ollama"]["model"] == "gemma4:26b"
     assert settings["deepseek"]["api_key"] == ""
     assert settings["sync"]["credentials_dir"] == ".secrets"

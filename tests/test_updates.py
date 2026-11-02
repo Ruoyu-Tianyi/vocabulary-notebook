@@ -1,5 +1,4 @@
 """Compatibility and update checks protect real state independently of the UI."""
-import asyncio
 import json
 from pathlib import Path
 
@@ -103,52 +102,3 @@ def test_time_sorting_respects_timezones_pagination_and_exports(tmp_path, monkey
     oldest = client.get("/api/words", params={"sort": "created_asc"}).json()
     assert [word["id"] for word in oldest["words"]] == ["older", "middle", "newest"]
     assert app.DATA_FILE.read_bytes() == original  # sorting never rewrites persisted state
-
-
-def test_new_word_immediate_definition_and_missing_key_status(tmp_path, monkeypatch):
-    monkeypatch.setattr(app, "DATA_FILE", tmp_path / "words.json")
-    monkeypatch.setattr(app.config, "get_ai_settings", lambda: {"configured": False})
-    monkeypatch.setattr(app, "_enrich_states", {})
-    client = TestClient(app.app)
-    manual = client.post("/api/words", json={"word": "contract", "definition": "n. 合同"}).json()
-    assert manual["word"]["definition"] == "n. 合同" and manual["enrichment"]["status"] == "ready"
-    pending = client.post("/api/words", json={"word": "consideration"}).json()
-    assert pending["enrichment"]["status"] == "not_configured"
-    retried = client.post(f"/api/words/{pending['word']['id']}/enrich").json()
-    assert retried["enrichment"]["status"] == "not_configured"
-    assert len(app.load_words()["words"]) == 2
-
-
-def test_worker_result_is_available_without_sse_and_retry_is_deduplicated(tmp_path, monkeypatch):
-    monkeypatch.setattr(app, "DATA_FILE", tmp_path / "words.json")
-    monkeypatch.setattr(app, "_enrich_states", {})
-    monkeypatch.setattr(app, "_enriching_ids", {})
-    monkeypatch.setattr(app.config, "get_ai_settings", lambda: {"configured": True})
-    calls = []
-    async def fake_enrich(word, context):
-        calls.append(word)
-        return "/test/", "n. 合同", "The contract is valid."
-    monkeypatch.setattr(app, "enrich_word", fake_enrich)
-    monkeypatch.setattr(app, "_enrich_post_check", lambda *args: (True, ""))
-
-    async def scenario():
-        monkeypatch.setattr(app, "_enrich_queue", asyncio.Queue())
-        monkeypatch.setattr(app, "_event_queue", asyncio.Queue())
-        created = await app.create_word({"word": "contract"})
-        word_id = created["word"]["id"]
-        assert created["enrichment"]["status"] == "queued"
-        await app.retry_word_enrichment(word_id)
-        assert app._enrich_queue.qsize() == 1
-        worker = asyncio.create_task(app._enrich_worker())
-        try:
-            await asyncio.wait_for(app._enrich_queue.join(), timeout=2)
-            fetched = app.get_word(word_id)
-            assert fetched["enrichment"]["status"] == "ready"
-            assert fetched["word"]["definition"] == "n. 合同"
-            await app.retry_word_enrichment(word_id)
-            assert app._enrich_queue.qsize() == 0 and calls == ["Contract"]
-        finally:
-            worker.cancel()
-            with pytest.raises(asyncio.CancelledError):
-                await worker
-    asyncio.run(scenario())

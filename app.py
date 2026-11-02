@@ -19,7 +19,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import httpx
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -28,10 +28,12 @@ from fastapi.responses import StreamingResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 import config
+import model_providers
 from compat import getenv
 from event_broadcast import EventBroadcast
 import fsrs
 import sync_storage
+import notebook_contexts
 from drive_sync import DriveSync
 import instance_lock
 from pdf_export import DEFAULT_CJK_FONT_PATH as _CJK_FONT_PATH
@@ -319,8 +321,7 @@ def _review_stats_for(words: list[dict], now: datetime, daily_new_limit: int,
 
 
 async def enrich_word(word: str, context: str = "") -> tuple[str, str, str]:
-    """调用配置好的 Provider 补充音标、释义和例句，返回 (phonetic, definition, example)。失败返回空串。"""
-    import logging
+    """调用配置好的 Provider 补充音标、释义和例句，返回 (phonetic, definition, example)。服务或格式错误抛出异常；仅明确的三字段空响应表示未识别词汇。"""
     logger = logging.getLogger("uvicorn")
 
     prompt = f'''For the English word "{word}", provide its dictionary
@@ -400,34 +401,32 @@ primary meaning first (e.g., "pharmacy" — "药店" comes before
 Reply ONLY with a JSON object, no other text:
 {{"phonetic": "/.../", "definition": "n. 释义一，释义二\\nvt. 及物释义", "example": "..."}}'''
     if context:
-        prompt += "\nCourse context (use for sense and example selection): " + context[:600]
+        prompt += "\nDomain guidance: " + context
+
     try:
-        settings = config.get_deepseek_config()
-        if not settings["api_key"]:
-            raise EnrichmentUnavailable("请先配置 DeepSeek API Key")
-        async with httpx.AsyncClient(timeout=120) as client:
-            resp = await client.post("https://api.deepseek.com/chat/completions", json={
-                "model": settings["model"], "messages": [{"role": "user", "content": prompt}],
-                "response_format": {"type": "json_object"}, "thinking": {"type": "disabled"},
-                "max_tokens": 2048, "stream": False,
-            }, headers={"Authorization": "Bearer " + settings["api_key"]})
-            resp.raise_for_status()
-            text = (resp.json()["choices"][0]["message"]["content"] or "").strip()
+        provider = config.get_provider()
+        if provider == "ollama":
+            values = config.get_ollama_config()
+        elif provider == "deepseek":
+            values = config.get_deepseek_config()
+        else:
+            values = config.get_model_config(provider)
+        text = await model_providers.complete(model_providers.resolve(provider, values), prompt, json_output=True)
 
         match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
         if not match:
-            raise EnrichmentUnavailable("DeepSeek 返回格式不完整，请重试补全")
+            raise EnrichmentUnavailable("模型返回格式不完整，请重试补全")
         data = json.loads(match.group())
-        keys = ("phonetic", "definition", "example")
-        if not isinstance(data, dict) or any(key not in data or not isinstance(data[key], str) for key in keys):
-            raise EnrichmentUnavailable("DeepSeek 返回格式不完整，请重试补全")
-        return tuple(data[key].strip() for key in keys)
+        fields = ("phonetic", "definition", "example")
+        if not isinstance(data, dict) or any(not isinstance(data.get(key), str) for key in fields):
+            raise EnrichmentUnavailable("模型返回格式不完整，请重试补全")
+        return tuple(data[key].strip() for key in fields)
     except EnrichmentUnavailable:
         raise
-    except Exception as e:
-        code = e.response.status_code if isinstance(e, httpx.HTTPStatusError) else "unavailable"
-        logger.warning("[enrich] DeepSeek 请求失败：%s (%s)", type(e).__name__, code)
-        raise EnrichmentUnavailable("DeepSeek 服务暂不可用，请检查 API Key、余额与网络后重试") from None
+    except Exception as exc:
+        # Do not log provider responses, credentials or credential-bearing URLs.
+        logger.warning("[enrich] provider unavailable: %s", type(exc).__name__)
+        raise EnrichmentUnavailable("模型服务暂不可用，请检查配置、余额与网络后重试") from None
 
 
 # ─── API: SSE 事件流 ──────────────────────────────────────
@@ -442,17 +441,6 @@ def desktop_instance():
     root = str(Path(__file__).resolve().parent).rstrip("\\/").replace("\\", "/").lower()
     return {"application": "drive-vocabulary-book",
             "installation_id": hashlib.sha256(root.encode("utf-8")).hexdigest()}
-
-@app.get("/api/ai/settings")
-def ai_settings():
-    return config.get_ai_settings()
-
-@app.put("/api/ai/settings")
-def update_ai_settings(body: dict):
-    try:
-        return config.save_ai_settings(body.get("api_key", ""), body.get("model", config.DEFAULT_MODEL))
-    except ValueError as exc:
-        raise HTTPException(422, str(exc)) from exc
 
 @app.get("/api/events")
 async def event_stream(request: Request):
@@ -494,13 +482,92 @@ class OllamaSettings(BaseModel):
 
 
 class DeepSeekSettings(BaseModel):
-    api_key: str = Field(default="", max_length=1000)
-    model: str = Field(default="", max_length=100)
+    api_key: str = ""
+    model: str = ""
+
+
+class ProviderSettings(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    base_url: str = ""
+    model: str = ""
+    api_key: str = ""
+    clear_api_key: bool = False
+    protocol: Literal["openai", "anthropic", "ollama"] = "openai"
+    timeout: int = Field(default=120, ge=5, le=600)
+    models: list[str] = Field(default_factory=list, max_length=5000)
 
 
 class ModelSettings(BaseModel):
-    provider: Literal["deepseek"] = "deepseek"
+    provider: str
+    ollama: OllamaSettings = Field(default_factory=OllamaSettings)
     deepseek: DeepSeekSettings = Field(default_factory=DeepSeekSettings)
+    providers: dict[str, ProviderSettings] | None = None
+
+
+class ProviderRequest(ProviderSettings):
+    provider: str
+
+
+def resolve_request(settings):
+    if settings.provider not in model_providers.PROVIDERS:
+        raise HTTPException(422, "不支持的模型供应商")
+    values = settings.model_dump(exclude={"provider"})
+    old = config.provider_values(config.load_config(), settings.provider)
+    preset = model_providers.PROVIDERS[settings.provider]
+    # 修改地址后不自动向新主机发送旧密钥或环境密钥。
+    try:
+        protocol = values["protocol"] if settings.provider == "custom" else preset["protocol"]
+        target = model_providers.normalize_url(values.get("base_url") or preset["base_url"], protocol)
+        previous_url = old.get("base_url") or old.get("url") or preset["base_url"]
+        previous_protocol = old.get("protocol", protocol) if settings.provider == "custom" else protocol
+        previous = model_providers.normalize_url(previous_url, previous_protocol) if previous_url else ""
+        inherited_key = (old.get("api_key") if not values["clear_api_key"] else "") or os.environ.get(preset["env_key"])
+        if not values["api_key"] and target != previous and inherited_key:
+            raise ValueError("API 地址已改变，请重新输入密钥后保存、测试或获取模型")
+        if not values["api_key"] and not values["clear_api_key"]:
+            values["api_key"] = old.get("api_key", "")
+        resolved = model_providers.resolve(settings.provider, values)
+        if settings.provider not in ("ollama", "custom") and not resolved["api_key"]:
+            raise ValueError("请填写 API Key 或设置环境变量")
+        return resolved
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from None
+
+
+def provider_error(exc):
+    if isinstance(exc, httpx.HTTPStatusError):
+        status = exc.response.status_code
+        if status in (401, 403):
+            return HTTPException(400, "认证失败，请检查密钥、地区和访问权限")
+        if status == 429:
+            return HTTPException(429, "请求受限，请检查额度或稍后重试")
+        if status == 404:
+            return HTTPException(400, "接口或模型不存在；请检查 API 地址，或手动填写模型 ID")
+    return HTTPException(502, "模型服务请求失败，请检查地址、网络和模型配置后重试")
+
+
+@app.post("/api/model-settings/models")
+async def list_provider_models(settings: ProviderRequest):
+    resolved = resolve_request(settings)
+    try:
+        return {"models": await model_providers.discover(resolved)}
+    except Exception as exc:
+        raise provider_error(exc) from None
+
+
+@app.post("/api/model-settings/test")
+async def test_provider(settings: ProviderRequest):
+    resolved = resolve_request(settings)
+    if not settings.model.strip():
+        raise HTTPException(400, "请先选择或填写模型 ID")
+    try:
+        text = await model_providers.complete(resolved, "Reply only with OK.")
+        if not text:
+            raise ValueError("empty response")
+        return {"status": "connected"}
+    except Exception as exc:
+        raise provider_error(exc) from None
 
 
 async def deepseek_models(api_key: str) -> list[str]:
@@ -531,44 +598,47 @@ def read_model_settings():
 
 @app.post("/api/model-settings/deepseek-models")
 async def list_deepseek_models(settings: DeepSeekSettings):
-    key = os.environ.get("DEEPSEEK_API_KEY") or settings.api_key.strip() or config.get_deepseek_config()["api_key"]
-    return {"models": await deepseek_models(key)}
+    key = settings.api_key.strip() or config.get_deepseek_config().get("api_key", "")
+    models = await deepseek_models(key)
+    return {"models": models}
 
 
 @app.put("/api/model-settings")
 async def update_model_settings(settings: ModelSettings):
-    key = os.environ.get("DEEPSEEK_API_KEY") or settings.deepseek.api_key.strip() or config.get_deepseek_config()["api_key"]
-    model = os.environ.get("DEEPSEEK_MODEL") or settings.deepseek.model.strip()
-    models = await deepseek_models(key)
-    if model not in models:
-        raise HTTPException(400, "所选模型已不在 DeepSeek 当前可用模型列表中，请刷新列表并重新选择")
+    if settings.provider not in model_providers.PROVIDERS:
+        raise HTTPException(422, "不支持的模型供应商")
+    profiles = None
+    if settings.providers is not None:
+        profiles = {name: value.model_dump() for name, value in settings.providers.items()}
+        if settings.provider not in profiles:
+            raise HTTPException(400, "缺少当前供应商配置")
+        # 地址改变时必须显式提供新密钥，避免继承凭据到其他服务。
+        resolve_request(ProviderRequest(provider=settings.provider, **profiles[settings.provider]))
     try:
-        config.save_ai_settings(settings.deepseek.api_key, settings.deepseek.model)
-        return config.public_config()
+        return config.save_model_config(settings.provider, settings.ollama.model_dump(),
+                                        settings.deepseek.model_dump(), profiles)
     except ValueError as exc:
-        raise HTTPException(400, str(exc))
+        raise HTTPException(400, str(exc)) from None
     except OSError:
-        raise HTTPException(500, "配置文件保存失败，请检查文件权限")
+        raise HTTPException(500, "配置文件保存失败，请检查文件权限") from None
 
 
 # ─── API: 健康检查 ────────────────────────────────────────
 
 @app.get("/api/health")
 async def health_check():
-    """Check credentials/model availability without a billable generation request."""
-    settings = config.get_deepseek_config()
-    result = {"provider": "deepseek", "model": settings["model"]}
-    if not settings["api_key"]:
-        return {**result, "status": "not_configured"}
+    provider = config.get_provider()
+    result = {"provider": provider, "provider_name": model_providers.PROVIDERS[provider]["name"]}
     try:
-        available = await deepseek_models(settings["api_key"])
-        return {**result, "status": "connected" if settings["model"] in available else "model_unavailable"}
-    except HTTPException as exc:
-        if exc.status_code == 400:
-            return {**result, "status": "unauthorized"}
+        settings = config.get_model_config(provider)
+        models = await model_providers.discover(settings)
+        if settings["model"] not in models:
+            # 云端目录可能不是完整的可调用模型清单，不能据此宣布模型下线。
+            return {**result, "status": "model_unavailable" if provider == "ollama" else "unverified",
+                    "model": settings["model"]}
+        return {**result, "status": "connected"}
     except Exception:
-        pass
-    return {**result, "status": "disconnected"}
+        return {**result, "status": "unverified" if provider != "ollama" else "disconnected"}
 
 
 # ─── API: 单词本 ─────────────────────────────────────────
@@ -589,7 +659,7 @@ def _notebook_words(data: dict, notebook_id: str = "") -> list:
 
 
 def _notebook_response(book: dict, words: list) -> dict:
-    return {**book, "word_count": sum(word.get("notebook_id", sync_storage.DEFAULT_BOOK) == book["id"]
+    return {**book, "context_id": notebook_contexts.context_id(book["id"]), "word_count": sum(word.get("notebook_id", sync_storage.DEFAULT_BOOK) == book["id"]
                                      for word in words)}
 
 
@@ -601,6 +671,11 @@ def _notebook_fields(body: dict, data: dict, current: Optional[dict] = None) -> 
     if any(book["name"].casefold() == name.casefold() and (not current or book["id"] != current["id"])
            for book in data["notebooks"]):
         raise HTTPException(409, "已存在同名的单词本")
+    preset = _text(body, "context_id", default=notebook_contexts.context_id(current["id"]) if current else "", limit=40)
+    if preset and preset not in notebook_contexts.PRESETS:
+        raise HTTPException(422, "不支持的语境类型")
+    if current and preset != notebook_contexts.context_id(current["id"]):
+        raise HTTPException(422, "语境类型创建后不可更改，请新建单词本")
     return {"name": name, "description": description}
 
 
@@ -608,14 +683,16 @@ def _notebook_fields(body: dict, data: dict, current: Optional[dict] = None) -> 
 def list_notebooks():
     data = load_words()
     return {"notebooks": [_notebook_response(book, data["words"]) for book in data["notebooks"]],
-            "total_words": len(data["words"])}
+            "total_words": len(data["words"]),
+            "contexts": [{"id": key, **value} for key, value in notebook_contexts.PRESETS.items()]}
 
 
 @app.post("/api/notebooks")
 def create_notebook(body: dict):
     with _write_lock:
         data = load_words()
-        book = {"id": uuid.uuid4().hex[:12], **_notebook_fields(body, data), "created_at": now_iso()}
+        fields = _notebook_fields(body, data)
+        book = {"id": notebook_contexts.new_id(body.get("context_id", "").strip()), **fields, "created_at": now_iso()}
         data["notebooks"].append(book)
         save_words(data)
         return _notebook_response(book, data["words"])
@@ -886,15 +963,11 @@ async def _enqueue_enrich_batch(items: list) -> None:
     if not items:
         return
     now = asyncio.get_event_loop().time()
-    added = 0
     for word_id, word_text in items:
-        if _enrich_states.get(word_id, {}).get("status") in ("queued", "processing"):
-            continue
-        _enrich_states[word_id] = {"status": "queued"}
         _enriching_ids[word_id] = now
+        _enrich_states[word_id] = {"status": "queued"}
         await _enrich_queue.put((word_id, word_text))
-        added += 1
-    _enrich_batch_total += added
+    _enrich_batch_total += len(items)
 
 
 def _maybe_reset_batch_if_idle() -> None:
@@ -959,24 +1032,8 @@ def enrich_progress():
     }
 
 
-def _word_enrichment(word):
-    if word.get("definition", "").strip():
-        return {"status": "ready"}
-    if word["id"] in _enrich_states:
-        return dict(_enrich_states[word["id"]])
-    return {"status": "idle" if config.get_ai_settings()["configured"] else "not_configured"}
-
-@app.post("/api/words/{word_id}/enrich")
-async def retry_word_enrichment(word_id: str):
-    word = get_word(word_id)["word"]
-    if not word.get("definition", "").strip() and config.get_ai_settings()["configured"]:
-        if _enrich_queue is None:
-            raise HTTPException(503, "补全服务尚未启动，请重启词汇本")
-        await _enqueue_enrich_batch([(word_id, word["word"])])
-    return {"word": word, "enrichment": _word_enrichment(word)}
-
 def _word_response(word: dict) -> dict:
-    state = _word_enrichment(word)
+    state = {"status": "ready"} if word.get("definition") else _enrich_states.get(word["id"], {"status": "idle"})
     return {"word": word, "enrichment": state}
 
 
@@ -1081,7 +1138,11 @@ async def create_word(body: dict):
                     detail={"message": f"「{w['word']}」已存在，已展示已有内容", **_word_response(w)},
                 )
 
-        source = {}  # Generate the meaning for this course, not a different notebook.
+        matches = [word for word in data["words"] if word["word"].casefold() == word_lower
+                   and not notebook_contexts.context_id(notebook_id)
+                   and not notebook_contexts.context_id(word.get("notebook_id", ""))]
+        source = max(matches, key=lambda word: sum(bool(word.get(key, "").strip())
+                     for key in ("definition", "phonetic", "example")), default={})
         word_id = uuid.uuid4().hex[:12]
         word_obj = {
             "id": word_id,
@@ -1101,34 +1162,43 @@ async def create_word(body: dict):
             _new_enrichment_candidates[word_id] = {"word": dict(word_obj), "operations": _word_operation_ids(stored, word_id)}
 
     # 送入补全队列，后台串行处理（持续累加，不重置 — 用户显式补全缺失才是新一批）
-    if not word_obj["definition"] and _enrich_queue is not None and config.get_ai_settings()["configured"]:
+    if not word_obj["definition"]:
         await _enqueue_enrich_batch([(word_id, word_text)])
 
     return _word_response(word_obj)
 
 
 
-def _discard_unrecognized_new_word(word_id, notebook_id, context):
-    candidate = _new_enrichment_candidates.get(word_id)
-    if candidate is None:
-        return False
+def _enrichment_revision(data, word):
+    """Include operation IDs so a move/edit followed by undo still invalidates a request."""
+    notebook_id = word.get("notebook_id", sync_storage.DEFAULT_BOOK)
+    book = next((b for b in data["notebooks"] if b["id"] == notebook_id), None)
+    operations = frozenset(op["id"] for op in data.get("_sync", {}).get("operations", {}).values()
+                           if (op["entity"] == "word" and op["entity_id"] == word["id"]
+                               and op["field"] in ("word", "notebook_id"))
+                           or (op["entity"] == "notebook" and op["entity_id"] == notebook_id))
+    return (word["word"], notebook_id, book, operations)
+
+
+def _discard_unrecognized_new_word(word_id, revision):
     with _write_lock:
+        candidate = _new_enrichment_candidates.get(word_id)
+        if candidate is None:
+            return False
         data = load_words()
-        word = next((w for w in data["words"] if w["id"] == word_id), None)
-        book = next((b for b in data["notebooks"] if b["id"] == notebook_id), {})
-        current_context = book.get("name", "") + ": " + book.get("description", "")
-        if (word != candidate["word"] or current_context != context
-                or _word_operation_ids(data, word_id) != candidate["operations"]):
-            return False  # Protect edits, moves, reviews and changes from another device.
+        current = next((w for w in data["words"] if w["id"] == word_id), None)
+        if (current != candidate["word"] or _word_operation_ids(data, word_id) != candidate["operations"]
+                or _enrichment_revision(data, current) != revision):
+            return False
         data["words"] = [w for w in data["words"] if w["id"] != word_id]
-        save_words(data)  # Persist a tombstone, so an offline device cannot restore the typo.
-    return True
+        save_words(data)
+        return True
 
 
 
-async def _reject_unrecognized(word_id, word_text, notebook_id, context):
-    removed = _discard_unrecognized_new_word(word_id, notebook_id, context)
-    reason = "未识别为有效词汇，已自动移除本次新增内容，请检查拼写后重新输入。" if removed else "未识别为有效词汇，已有或已修改的内容已保留，请检查拼写。"
+async def _reject_unrecognized(word_id, word_text, revision):
+    removed = _discard_unrecognized_new_word(word_id, revision)
+    reason = "未识别为有效词汇，已自动移除本次新增内容，请检查拼写。" if removed else "未识别为有效词汇，已有或已修改的内容已保留，请检查拼写。"
     _enrich_states[word_id] = {"status": "removed" if removed else "failed", "error": reason}
     if _event_queue is not None:
         await _event_queue.put({"type": "enrich_failed", "word_id": word_id,
@@ -1136,27 +1206,26 @@ async def _reject_unrecognized(word_id, word_text, notebook_id, context):
 
 
 async def _enrich_worker():
-    """单 worker 串行调用 DeepSeek，保留人工编辑内容。"""
+    """单 worker 串行调用模型，保留人工编辑内容。"""
     global _enrich_current, _enrich_batch_done
-    import logging
     logger = logging.getLogger("uvicorn")
-    logger.warning("[enrich-worker] started")
+    logger.info("[enrich-worker] started")
     while True:
         word_id, word_text = await _enrich_queue.get()
         _enrich_states[word_id] = {"status": "processing"}
         _enrich_current = word_text
-        logger.warning(f"[enrich-worker] picked: {word_text!r} id={word_id}")
+        logger.debug("[enrich-worker] picked id=%s", word_id)
         try:
             current_data = load_words()
             current_word = next((w for w in current_data["words"] if w["id"] == word_id), None)
+            revision = _enrichment_revision(current_data, current_word) if current_word is not None else None
             if current_word is None:
                 continue
-            book = next((b for b in current_data["notebooks"] if b["id"] == current_word.get("notebook_id")), {})
-            notebook_id = current_word.get("notebook_id", "default")
-            context = book.get("name", "") + ": " + book.get("description", "")
-            phonetic, definition, example = await enrich_word(word_text, context)
+            context = notebook_contexts.prompt_for(current_word.get("notebook_id", ""))
+            phonetic, definition, example = (await enrich_word(word_text, context) if context
+                                             else await enrich_word(word_text))
             if not phonetic and not definition and not example:
-                await _reject_unrecognized(word_id, word_text, notebook_id, context)
+                await _reject_unrecognized(word_id, word_text, revision)
                 _enrich_batch_done += 1
                 continue
 
@@ -1164,7 +1233,7 @@ async def _enrich_worker():
             ok, reason = _enrich_post_check(word_text, phonetic, definition, example)
             if not ok:
                 if reason.startswith(("word 不在英语词典", "词组中分词拼写错")):
-                    await _reject_unrecognized(word_id, word_text, notebook_id, context)
+                    await _reject_unrecognized(word_id, word_text, revision)
                     _enrich_batch_done += 1
                     continue
                 _enrich_states[word_id] = {"status": "failed", "error": reason}
@@ -1184,10 +1253,8 @@ async def _enrich_worker():
                 data = load_words()
                 for w in data["words"]:
                     if w["id"] == word_id and w["word"] == word_text:
-                        current_book = next((b for b in data["notebooks"] if b["id"] == w.get("notebook_id")), {})
-                        current_context = current_book.get("name", "") + ": " + current_book.get("description", "")
-                        if w.get("notebook_id", "default") != notebook_id or current_context != context:
-                            break  # Never write an answer generated for a different course.
+                        if _enrichment_revision(data, w) != revision:
+                            break
                         if phonetic and not w.get("phonetic"):
                             w["phonetic"] = phonetic
                         if definition and not w.get("definition"):
@@ -1200,7 +1267,7 @@ async def _enrich_worker():
 
             _enrich_batch_done += 1
             if written is None:
-                reason = "单词或课程信息已更改，旧补全结果未写入，请重新补全。"
+                reason = "单词已更改，旧补全结果未写入，请重新补全。"
                 _enrich_states[word_id] = {"status": "failed", "error": reason}
                 _enriching_ids.pop(word_id, None)
                 if _event_queue is not None:
@@ -1223,7 +1290,7 @@ async def _enrich_worker():
         except Exception as e:
             _enrich_states[word_id] = {"status": "failed", "error": "自动补全未完成，单词已保存，可以重试或手动编辑。"}
             # 外层保护:任何意外异常都不让 worker 死,记录后继续下一个
-            logger.exception(f"[enrich-worker] UNCAUGHT EXCEPTION: {e}")
+            logger.warning("[enrich-worker] failed: %s", type(e).__name__)
             import asyncio as _aio
             await _aio.sleep(1)
         finally:
@@ -1323,12 +1390,9 @@ def _filter_words(data: dict, q: str, date: str, sort: str = "", letter: str = "
     words = _notebook_words(data, notebook_id)
     if date:
         words = [w for w in words if w["created_at"].startswith(date)]
-    query = unicodedata.normalize("NFKC", q).strip().casefold()
-    if query:
-        words = [w for w in words if any(
-            query in unicodedata.normalize("NFKC", w.get(field) or "").casefold()
-            for field in ("word", "definition")
-        )]
+    if q:
+        ql = unicodedata.normalize("NFKC", q).strip().casefold()
+        words = [w for w in words if ql in w["word"].lower() or ql in w["definition"].lower()]
     if letter:
         l = letter.lower()
         words = [w for w in words if w["word"].lower().startswith(l)]
@@ -1474,7 +1538,7 @@ def import_library(body: dict):
             if book["id"] not in known_books:
                 if book["id"] in deleted_books:
                     original_id = book["id"]
-                    book["id"] = restored_books.setdefault(original_id, uuid.uuid4().hex[:12])
+                    book["id"] = restored_books.setdefault(original_id, notebook_contexts.new_id(notebook_contexts.context_id(original_id)))
                 data["notebooks"].append(book)
                 known_books.add(book["id"])
         known_words = {word["id"] for word in data["words"]}

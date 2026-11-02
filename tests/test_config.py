@@ -1,55 +1,77 @@
-"""Fork configuration retains local secrets and upstream fail-before-cache validation."""
+"""配置校验失败与原子保存只使用临时文件。"""
 import json
+
 import pytest
+
 import config
+
 
 @pytest.fixture
 def config_file(tmp_path, monkeypatch):
-    path = tmp_path / 'config.json'
-    monkeypatch.setattr(config, 'CONFIG_FILE', path)
-    monkeypatch.setattr(config, '_CONFIG', {})
-    monkeypatch.delenv('DEEPSEEK_API_KEY', raising=False)
-    monkeypatch.delenv('DEEPSEEK_MODEL', raising=False)
-    monkeypatch.chdir(tmp_path)
+    path = tmp_path / "config.json"
+    monkeypatch.setattr(config, "CONFIG_FILE", path)
+    monkeypatch.setattr(config, "_CONFIG", {})
     return path
 
-@pytest.mark.parametrize('data', [[], 'config', {'provider':'unknown'},
-    {'deepseek':None}, {'srs':[]}, {'sync':'invalid'},
-    {'deepseek':{'model':' '}}, {'deepseek':{'model':123}}])
-def test_invalid_config_is_never_cached_and_can_be_repaired(config_file, data):
-    config_file.write_text(json.dumps(data), encoding='utf-8')
-    for _ in range(2):
-        with pytest.raises(RuntimeError): config.load_config()
-        assert config._CONFIG == {}
-    config_file.write_text(json.dumps({'provider':'deepseek','srs':{'daily_new_limit':17}}))
-    assert config.get_provider() == 'deepseek'
-    assert config.get_srs_config()['daily_new_limit'] == 17
 
-def test_missing_config_supports_first_run_and_malformed_remains_retryable(config_file, monkeypatch):
-    assert config.get_ai_settings()['configured'] is False
-    monkeypatch.setattr(config, '_CONFIG', {})
-    config_file.write_text('{')
-    with pytest.raises(RuntimeError, match='格式错误'): config.load_config()
+def valid_config():
+    return {"provider": "ollama", "ollama": {"url": "http://localhost:11434/api/generate", "model": "test"},
+            "srs": {"daily_new_limit": 17}}
+
+
+@pytest.mark.parametrize("data", [
+    [], "config", {"provider": "unknown"},
+    {"provider": "ollama", "ollama": {}},
+    {"provider": "ollama", "ollama": {"url": "http://localhost", "model": []}},
+    {"provider": "deepseek", "deepseek": {"api_key": "test-only", "model": " "}},
+    {**valid_config(), "deepseek": None},
+    {**valid_config(), "srs": []},
+    {**valid_config(), "sync": "invalid"},
+])
+def test_invalid_config_is_never_cached_and_can_be_repaired(config_file, data):
+    config_file.write_text(json.dumps(data), encoding="utf-8")
+    for _ in range(2):
+        with pytest.raises(RuntimeError):
+            config.load_config()
+        assert config._CONFIG == {}
+    config_file.write_text(json.dumps(valid_config()), encoding="utf-8")
+    assert config.get_provider() == "ollama"
+    assert config.get_srs_config() == {"daily_new_limit": 17}
+
+
+def test_missing_and_malformed_files_remain_retryable(config_file):
+    with pytest.raises(RuntimeError, match="配置文件不存在"):
+        config.load_config()
+    config_file.write_text("{", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="格式错误"):
+        config.load_config()
     assert config._CONFIG == {}
 
-def test_failed_save_preserves_existing_secret_and_configuration(config_file, monkeypatch):
-    import sync_storage
-    config_file.write_text(json.dumps({'provider':'deepseek'}))
-    config.save_ai_settings('test-only', 'test-model')
-    secret = config_file.parent / '.secrets' / 'deepseek.json'
-    original = secret.read_bytes()
-    before = config_file.read_bytes()
-    def fail(*args): raise OSError('test write failure')
-    monkeypatch.setattr(sync_storage, 'atomic_write', fail)
-    with pytest.raises(OSError): config.save_ai_settings('new-key', 'new-model')
-    assert secret.read_bytes() == original
-    assert config_file.read_bytes() == before
-    assert config.get_deepseek_config()['model'] == 'test-model'
 
-def test_invalid_settings_never_replace_secret(config_file):
-    config.save_ai_settings('test-key', 'test-model')
-    secret = config_file.parent / '.secrets' / 'deepseek.json'
-    before = secret.read_bytes()
-    for key, model in [('bad key', 'model'), ('key', ' '), ('key', 123)]:
-        with pytest.raises(ValueError): config.save_ai_settings(key, model)
-    assert secret.read_bytes() == before
+def test_failed_atomic_replace_preserves_disk_and_cached_settings(config_file, monkeypatch):
+    original = valid_config()
+    config_file.write_text(json.dumps(original), encoding="utf-8")
+    before = config_file.read_bytes()
+    assert config.load_config() == original
+
+    def fail_replace(*_args):
+        raise OSError("test write failure")
+
+    monkeypatch.setattr(config.os, "replace", fail_replace)
+    with pytest.raises(OSError):
+        config.save_model_config("ollama", {**original["ollama"], "model": "changed"}, {})
+    assert config_file.read_bytes() == before
+    assert config.get_ollama_config() == original["ollama"]
+    assert not list(config_file.parent.glob(".config-*"))
+
+
+def test_invalid_model_save_never_replaces_valid_settings(config_file):
+    original = valid_config()
+    config_file.write_text(json.dumps(original), encoding="utf-8")
+    before = config_file.read_bytes()
+    with pytest.raises(ValueError):
+        config.save_model_config("other", original["ollama"], {})
+    with pytest.raises(ValueError):
+        config.save_model_config("ollama", {"url": "http://localhost", "model": 123}, {})
+    assert config_file.read_bytes() == before
+    assert config.load_config() == original

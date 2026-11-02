@@ -18,7 +18,7 @@ function useProviderLabel() {
       .then(d => {
         if (controller.signal.aborted) return
         const p = d.provider
-        setLabel(p === 'ollama' ? 'Ollama' : p === 'deepseek' ? 'DeepSeek' : p || '模型')
+        setLabel(d.provider_name || p || '模型')
       })
       .catch(() => {})
     return () => controller.abort()

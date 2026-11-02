@@ -12,8 +12,7 @@ def isolated_default_config(tmp_path_factory, monkeypatch):
     directory = tmp_path_factory.mktemp("default-settings")
     path = directory / "config.json"
     path.write_text(json.dumps({
-        "provider": "deepseek",
-        "deepseek": {"api_key": "test-only", "model": "test-only"},
+        "provider": "ollama",
         "ollama": {"url": "http://127.0.0.1:9/api/generate", "model": "test-only"},
         "srs": {"daily_new_limit": 20},
         "sync": {"interval_seconds": 30, "credentials_dir": str(directory / ".secrets")},

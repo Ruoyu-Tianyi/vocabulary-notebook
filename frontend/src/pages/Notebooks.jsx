@@ -6,10 +6,11 @@ import NavigationIcon from '../components/NavigationIcon'
 import './NotebookPolish.css'
 
 export default function Notebooks() {
-  const { notebooks, loading, error, refresh } = useNotebooks()
+  const { notebooks, contexts, loading, error, refresh } = useNotebooks()
   const [editing, setEditing] = useState(null)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [contextId, setContextId] = useState('')
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState('')
   const [notice, setNotice] = useState('')
@@ -20,6 +21,7 @@ export default function Notebooks() {
     setEditing(book)
     setName(book.name || '')
     setDescription(book.description || '')
+    setContextId(book.context_id || '')
     setFormError('')
     setNotice('')
     setDeleting('')
@@ -35,7 +37,7 @@ export default function Notebooks() {
     setBusy(true)
     setFormError('')
     try {
-      const fields = { name: name.trim(), description: description.trim() }
+      const fields = { name: name.trim(), description: description.trim(), context_id: contextId }
       if (editing.id) await updateNotebook(editing.id, fields)
       else await createNotebook(fields)
       setNotice(editing.id ? '单词本已更新' : `已创建「${fields.name}」，可以开始收录单词了。`)
@@ -69,6 +71,15 @@ export default function Notebooks() {
     {editing && <form ref={formRef} className="notebook-form" onSubmit={save} aria-labelledby="notebook-form-heading">
       <h3 id="notebook-form-heading">{editing.id ? '编辑单词本' : '新建单词本'}</h3>
       <div className="form-group">
+        <label htmlFor="notebook-context">单词本类型</label>
+        <select id="notebook-context" value={contextId} disabled={busy || Boolean(editing.id)}
+          onChange={e => setContextId(e.target.value)} aria-describedby="notebook-context-help">
+          <option value="">分类单词本 · 通用释义</option>
+          {contexts.map(context => <option key={context.id} value={context.id}>语境单词本 · {context.label}</option>)}
+        </select>
+        <p id="notebook-context-help">{contextId ? '自动使用该专业的预设提示词生成释义与例句；已有内容不自动改写。' : '按课程或主题整理；名称和说明不会改变 AI 的释义语境。'}创建后类型固定，可另建不同语境的单词本。</p>
+      </div>
+      <div className="form-group">
         <label htmlFor="notebook-name">名称</label>
         <input id="notebook-name" value={name} onChange={e => setName(e.target.value)} type="text"
           placeholder="例如：金融英语、雅思阅读…" maxLength={80} required disabled={busy} />
@@ -94,6 +105,7 @@ export default function Notebooks() {
               <span className="notebook-word-count"><strong>{book.word_count}</strong> 个单词</span>
             </div>
             <Link className="notebook-title" to={`/?notebook_id=${encodeURIComponent(book.id)}`}><h3>{book.name}</h3></Link>
+            <p className="notebook-context-label">{book.context_id ? `语境单词本 · ${contexts.find(context => context.id === book.context_id)?.label || book.context_id}` : '分类单词本'}</p>
             <p className="notebook-description">{book.description || (book.word_count ? '随时回顾，按自己的节奏学习。' : '还没有单词，开始收录第一个吧。')}</p>
             <div className="notebook-actions notebook-primary-actions">
               <Link className="btn btn-primary" to={`/?notebook_id=${encodeURIComponent(book.id)}`}>查看单词<NavigationIcon name="arrow" /></Link>

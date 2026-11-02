@@ -1,303 +1,211 @@
-# 云端词汇本 · Drive Vocabulary Book
+[![Vocove 概念封面 · 访问产品网站](assets/vocove-cover.jpg)](https://www.vocove.cn)
 
-**本机运行词汇本，DeepSeek API 补全，Google Drive 同步词汇与学习记录。** 支持将新电脑作为日常主力、旧电脑作为备用，按法律、金融等课程创建独立单词本。
+# Vocove
 
-基于 **[Eric Zhou 的 Vocove](https://github.com/Eric-Zhou-0302/vocove)** 开发，保留原项目提交历史与 MIT 版权声明。原项目提供 FastAPI、React、AI 补全、FSRS 复习及导出；本项目扩展云同步、多单词本、逐次复习记录与冲突合并。[来源说明](NOTICE) · [原 README](docs/UPSTREAM_README.md) · [MIT License](LICENSE)
+> Tianyi 扩展分支：基于 Eric Zhou 的 Vocove v1.5.1，沿用上游界面与 Windows/macOS 桌面架构。安装、升级与补充功能见 **[分支使用指南](docs/FORK.md)**。下方上游下载链接为原版；本分支安装包从 [Desktop packages](https://github.com/Ruoyu-Tianyi/vocabulary-notebook/actions/workflows/desktop-build.yml) 获取。
 
-当前维护仓库为 **[Ruoyu-Tianyi/vocabulary-notebook](https://github.com/Ruoyu-Tianyi/vocabulary-notebook)**，它是原项目的 fork。`main` 提供完整云端版本；向原作者贡献的功能使用从原项目建立的独立分支。旧仓库 [drive-vocabulary-book](https://github.com/Ruoyu-Tianyi/drive-vocabulary-book) 保留历史并提示迁移。迁移只改变程序更新来源，沿用原来的安装目录、Drive 文件夹、词库、学习记录及本机密钥。
+[![Website](https://img.shields.io/badge/Website-vocove.cn-b89962)](https://www.vocove.cn)
+[![CI](https://github.com/Eric-Zhou-0302/vocove/actions/workflows/ci.yml/badge.svg)](https://github.com/Eric-Zhou-0302/vocove/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-即时记忆与安全输入已获上游采纳；其余更新进一步拆成六个独立 PR，见 [PR 与审核记录](docs/CONTRIBUTIONS.md)。日常安装和更新仍使用本仓库的 `main`。
+Vocove 是一个本地优先的英文词汇学习应用。你可以按主题整理单词，使用 Ollama 或多家云端模型补全音标、中文释义和例句，再通过间隔复习巩固记忆。
 
-## 能做什么
+**[访问产品网站 ↗](https://www.vocove.cn)** · [下载桌面版](https://www.vocove.cn/#download) · [查看功能](https://www.vocove.cn/#features) · [常见问题](https://www.vocove.cn/#faq)
 
-| 你的使用场景 | 对应功能 |
-|---|---|
-| 上课遇到法律、金融等专业词汇 | 按课程创建单词本，填写领域说明；同一拼写可以在不同本中保存不同含义 |
-| 想快速记词，添加后马上理解 | 只输入单词并保存，DeepSeek 自动补全音标、中文释义和例句，下方即时记忆区自动展示结果 |
-| 回看刚学的词或查找旧词 | 列表默认最新添加在前，可搜索拼写与释义、筛选日期或首字母、切换时间与字母排序 |
-| 希望长期记住，而不只是收集 | 今日复习按 FSRS 安排到期卡片；全部单词支持 A–Z 或随机翻卡，适合课前快速回顾 |
-| 在两台私人电脑交替学习 | 同一 Drive 文件夹同步词汇、单词本和逐次复习记录；离线保存，恢复连接后合并 |
-| 需要打印、整理或更换电脑 | 按条件导出 PDF / CSV / JSON；完整备份保留学习历史；Agent 更新提示词帮助保留数据升级 |
+当前版本：[**1.5.1**](https://github.com/Eric-Zhou-0302/vocove/releases/tag/v1.5.1)。支持 15 个模型供应商及自定义 API，完整变更见[更新日志](CHANGELOG.md)。
 
-## 日常怎么用
+## 功能亮点
 
-### 1. 选择课程单词本
+- **单词本管理**：同词可加入多个单词本，每本独立保存内容与复习进度。
+- **AI 内容补全**：支持 Ollama、DeepSeek、OpenAI、Claude 等 15 个供应商及自定义 API，显示任务进度，支持失败重试。
+- **间隔复习**：四档记忆评分、每日新词额度和复习间隔预览，也可按字母或随机顺序翻卡。
+- **查找与导出**：支持搜索、筛选、排序，以及 PDF、CSV、JSON 导出。
+- **同步与备份**：可选 Google Drive 文件夹或 API 直连，支持完整学习历史备份与合并导入。
+- **桌面与移动端体验**：提供深浅色主题、响应式布局、可收起侧栏和键盘快捷键。
 
-顶部三个醒目的入口分别是 **单词列表 → 添加单词 → 复习**，当前页面会高亮，复习入口的角标显示当前范围内待复习的数量。单词详情归在“单词列表”下。
+Vocove 提供桌面应用和网页两种使用方式。学习数据保存在本机；跨电脑使用可通过 Google Drive 同步，详见 [Drive 同步指南](docs/DRIVE_SYNC.md)。
 
-通过侧栏或手机导航进入 **单词本**，创建课程单词本。通过 **设置与工具** 查看 AI 和 Drive 连接状态。例如例如创建“法律英语”，并填写“合同法课程中的专业词汇”等说明，AI 补全时会参考这个领域。名称和课程说明可在单词本页面编辑。
+### 补全期间的编辑保护
 
-选择“全部单词本”可以跨本浏览和复习；添加页仍需选择一个具体单词本作为保存位置。
+模型请求发出后，如词条被移动、重命名或所属单词本被修改，本次旧结果不会写入；无效词响应也不会删除变更后的词条。页面会提示重新补全。已有释义和复习记录保留，同步日志格式不变。
 
-### 2. 输入单词，边添加边记忆
+## 桌面版：下载即用
 
-进入 **添加单词**，确认“保存到”的单词本，输入英文单词或短语，按 Enter 或点击保存。单词立即保存，输入框清空后可继续录入；没有 API Key 或暂时离线也可以先记录。
+桌面版基于 Electron，内置运行环境，无需安装 Python、Node.js 或使用命令行。
 
-新词入库时统一将英文首字母改为大写，其余字符保持输入时的大小写，例如 `contract` → `Contract`、`iPhone` → `IPhone`，`API`、`McDonald` 保持不变。只处理新添加的词，不批量改写旧词；需要特定拼写时，可在详情页编辑。
+[下载 Vocove 1.5.1 →](https://github.com/Eric-Zhou-0302/vocove/releases/tag/v1.5.1)
 
-保存区下方的 **刚刚添加 · 即时记忆** 展示本页最近添加或再次查看的 10 个单词。若所选单词本已有相同拼写（忽略大小写），会直接展示原来的释义、音标和例句，并标记“单词本中已有”，不会新增词条、改变添加时间或复习记录，也不会自动重新调用 AI。同一个词反复输入会移到最前面，不会堆叠重复卡片；不同单词本的相同拼写分别处理。
+| 系统 | 安装方式 |
+| --- | --- |
+| macOS Apple Silicon | 下载 arm64 的 `.dmg`，将应用拖入「应用程序」 |
+| macOS Intel | 下载 x64 的 `.dmg`，将应用拖入「应用程序」 |
+| Windows x64 | 下载 `.exe` 安装包，双击并按提示安装 |
 
-新词的音标、释义和例句生成后自动出现，不必切回列表；切走或刷新页面会清空这块临时展示，已保存的单词仍在列表中。补全失败可以点击单条“重试补全”，也可在列表批量“补全缺失”。
+**macOS 首次打开**：若提示 Apple 无法验证应用，点击「完成」，进入「系统设置 → 隐私与安全性 → 安全性」，点击「仍要打开」并确认。
 
-添加页只保留单词输入，不需要先填写课堂释义。需要修正含义或采用老师的定义时，点击 **查看 / 编辑 → 编辑**，修改释义、音标、课程例句或所属单词本。已有的手动释义会保留。
+> Q：为什么需要这个？
+> A：当前安装包未进行 Apple Developer ID 签名和公证。
 
-### 3. 整理和查找
+安装后打开 **Vocove**，在「设置与工具 → 模型设置」中配置模型供应商，即可开始记录和复习单词。
 
-**单词列表** 默认“添加时间：最新在前”，也可选择最早在前、A→Z 或 Z→A，当前浏览器会记住选择。搜索框同时匹配英文拼写和已保存的中文译文，例如输入“合同”可找到释义中含“合同”的词条。搜索忽略首尾空格、英文大小写和全角／半角差异；输入新搜索时清除首字母筛选，保留当前单词本和日期范围；日期和首字母筛选帮助缩小范围，点击单词卡片查看详情。
+> **应用内更新**：从 macOS「Vocove → 检查更新」或 Windows「帮助 → 检查更新」获取新版本。
 
-“导出”支持 PDF、CSV 和 JSON，按当前单词本、关键词、日期及所选排序导出；首字母按钮仅用于屏幕列表筛选。PDF 适合打印，但中文显示取决于本机可用字体。需要备份全部单词本及复习历史时，使用 **同步与备份 → 下载完整备份**。
+## 网页版：从源码运行
 
-### 4. 复习并保留进度
+### 环境要求
 
-**今日复习** 优先安排到期卡片，并按每日新词上限加入新词（默认 20）。先回忆，再点击卡片或按空格查看答案，以 **1 重来 / 2 困难 / 3 良好 / 4 简单** 评分；应用据此计算下次复习时间，并记录每次评分。没有释义的单词需要先补全或手动编辑，之后才会进入复习。
+- Python **3.11+**；CI 覆盖 3.11 和 3.12。
+- 直接使用已提交的前端构建文件时，无需 Node.js。
+- 修改前端需要 Node.js **22.13+（22.x）或 24+** 及 npm。
+- 以下命令适用于 macOS / Linux shell。
 
-**全部单词** 可以按 A–Z 或随机顺序翻卡，使用左右方向键切换、空格翻面。这种快速回顾不写入 FSRS 评分，也不会改变下次到期时间。按 `?` 可查看键盘帮助，Esc 关闭帮助。
-
-### 5. 在另一台电脑接着学
-
-两台电脑各自安装程序，连接同一个 Drive 文件夹。状态栏的 **Drive 已连接** 表示应用已连接所选存储，点击 **同步** 可以立即合并，点击状态文字或右上角 **同步与备份** 查看连接、API 设置和备份工具。
-
-文件夹模式下，待处理为 0 表示变更已写入本机 Drive 文件夹，实际上传下载由 Drive 桌面版完成。换电脑前确认桌面版同步结束；另一台收到文件后，应用默认每 30 秒自动合并。安装新电脑或更新现有电脑，直接复制下面对应的 Agent 提示词即可。
-
-## Agent 安装提示词
-
-在另一台电脑把下面整段复制给可操作本机的 Agent 即可。常规安装直接使用仓库附带的前端，无需 Node.js、Ollama 或模型文件。API Key 在该电脑的设置页输入。
-
-```text
-请在这台私人电脑上直接安装并配置“云端词汇本”，将这台电脑作为我的日常主力机。
-
-GitHub 仓库：https://github.com/Ruoyu-Tianyi/vocabulary-notebook
-请先读取最新 README 和适用的 AGENTS.md，然后实际执行安装，不要只给我步骤。
-
-1. 检查操作系统、Git 和 Python 3.11+。缺少时通过官方渠道安装；遇到系统权限、登录或安装条款时说明需要我完成的具体步骤。Windows 默认使用 D:\000_Workspace\云端词汇本；D 盘不可用则使用用户 Documents 下的 drive-vocabulary-book。本程序放在本地非同步目录。
-2. 克隆上述仓库的 main 分支。如果已存在这个项目，先检查工作区与远程，保留已有词库、配置和未提交修改，安全更新，不执行强制重置或覆盖。
-3. 创建项目独立 .venv 并安装 requirements.txt。使用已包含的 frontend/dist，常规安装无需 Node.js。此版本使用 DeepSeek API，不安装 Ollama 或下载模型。
-4. 检查是否已有 DEEPSEEK_API_KEY。没有时先启动应用，引导我在“同步与备份 → DeepSeek API 词汇补全”中自己输入 Key；不要让我把 Key 贴到聊天、命令行参数或仓库。默认模型 deepseek-flash，可按我的账号可用模型调整。Key 只留本机，各电脑分别配置，不复制另一台的 .secrets 或令牌。
-5. 检测 Google Drive 桌面版，未安装时从 Google 官方渠道安装并引导我登录；系统不支持桌面版时，说明情况并参考 README 的 Drive API 方案。找到同一 Google 账号已有的“我的云端硬盘/Drive Vocabulary Book”文件夹，等待完整下载并设为可离线使用，然后通过设置页连接它在本机的绝对路径。不同电脑的盘符可以不同。不要另建同名空词库，不要覆盖或清空云端 library.json / vocabulary-*.json。如果尚未登录、授权或尚未出现已有文件夹，只暂停这项并告诉我需要完成的步骤，继续其他安装工作。
-6. Windows 在安装目录运行 install-desktop-shortcut.ps1 创建“云端词汇本”桌面快捷方式，再运行 VocabularyBook.exe 一键启动；其他系统使用原方式。访问 http://127.0.0.1:1400，确认已有“法律英语”“金融英语”等单词本从云端恢复。同步采用双向合并，新电脑作为主力不需要清空或禁用旧电脑。保留两台各自的 words.json 本地缓存。
-7. 检查 /api/health、/api/sync/status 和浏览器错误。Key 未配置时应标记为待配置，仍能手动保存和同步。连接检测不发送收费的生成请求；需要测试真实词汇补全时，使用我指定的一个词验证，保留我的正式词汇与学习进度。没有 Key 时不要声称真实 DeepSeek 调用已通过。
-8. 完成后告诉我本机安装目录、启动方式、Drive 路径、当前 AI 配置状态、检查结果及任何仍需我处理的事项。默认无需创建远程部署、开机自启或推送任何个人数据。
-```
-
-## Agent 更新提示词
-
-### 已配置用户：快速更新
-
-已经安装并配置好 Drive、DeepSeek API 的电脑，直接复制这一段。无需重新安装、授权或填写 Key；两台电脑各执行一次即可。
-
-```text
-请直接更新本机已安装的“云端词汇本”：https://github.com/Ruoyu-Tianyi/vocabulary-notebook
-读取最新 README 的更新约定，在原安装目录执行：完成同步 → 安全停止本项目（Windows 启动器可用 --stop，等待其退出）→ 用 maintenance.py backup 创建本地备份 → 检查 Git 状态并快进更新到 origin/main → 按需更新原虚拟环境依赖，使用附带 frontend/dist → 启动前运行 maintenance.py verify --backup <实际备份路径> → Windows 创建或更新桌面快捷方式，用 VocabularyBook.exe 重启；其他系统用原方式，并检查词库、复习进度、API 和 Drive 状态。
-沿用现有单词本、学习记录、配置、环境变量及密钥，不重新配置 Drive/API、不清空或覆盖数据、不调用收费生成。若旧仓库地址、未提交修改、冲突或校验失败，按 README 完整流程保留现场处理，不强制重置。正常完成后只汇报旧/新提交、备份位置和检查结果。
-```
-
-### 首次迁移或异常排查：完整提示词
-
-旧仓库迁移、版本较旧或需要逐步排查时使用以下完整流程。每台电脑分别更新程序，继续连接原来的 Drive 文件夹。程序和数据分开保存，当前数据格式版本为 1。
-
-```text
-请直接更新这台电脑上已经在使用的“云端词汇本”，获取新功能并保留我的全部单词本、词汇、逐次评分、FSRS 进度、删除记录、API Key 和 Drive 连接。
-
-仓库：https://github.com/Ruoyu-Tianyi/vocabulary-notebook
-目标：更新现有安装到 origin/main，不重新创建词库，不将另一台电脑的数据文件整份覆盖到本机。
-
-1. 找到现有安装目录、应用启动方式、VOCAB_DATA_FILE（若设置）、config.json 和 sync.credentials_dir（默认 .secrets）。读取 README、适用的 AGENTS.md、Git 状态与当前提交，检查 origin。若仍指向旧仓库 Ruoyu-Tianyi/drive-vocabulary-book，先记录旧地址并保留为 legacy 远程，再把 origin 切换到上述 fork；如果 legacy 已存在则先检查其地址，不覆盖其他远程。其他不明来源不要擅自替换。保留现有用户环境变量，不回显任何 API Key 或令牌。
-2. 若应用正在运行，先通过本机页面完成一次同步，记录状态及词库/学习记录数量。文件夹模式还要确认 Google Drive 桌面版上传完成。离线时必须保留所有未同步变更，在报告里说明，不能清空缓存或待同步记录。
-3. 只停止这个安装目录对应的词汇本进程，保留其他程序。Windows 托盘启动器使用 Start-Process .\VocabularyBook.exe -ArgumentList '--stop' -Wait -PassThru -WindowStyle Hidden 并检查退出码为 0，等服务及托盘关闭后再备份；旧启动方式仅停止本项目原启动进程。先创建升级前本地备份：已有 maintenance.py 时，使用项目 .venv 中的 Python 执行 maintenance.py backup，记录返回的备份路径与旧提交。工具会备份词库及其已有备份、config.json、完整的本机凭据目录，并验证复制结果。备份包含密钥，不能上传到 Drive、GitHub 或聊天。
-4. 如果旧版本没有 maintenance.py，则在项目外新建本地时间戳备份目录，用文件复制保存上述数据、配置及凭据，并记录每个源文件的 SHA-256、原路径、旧提交和词库/评分数量。保留备份直到更新验收结束。不能先更新再把新状态当作升级前备份。
-5. 获取远程代码并确认现有提交是 origin/main 的祖先后，用 git pull --ff-only origin main 更新现有工作区，设置 main 跟踪新的 origin/main。存在未提交修改、分支分叉或冲突时，保留现场并说明冲突，不强制重置、不清理未跟踪文件，也不覆盖 config.json、words.json、.secrets、.backups 或云端变更文件。旧仓库迁移同样走这个流程，不另行克隆覆盖现有安装。
-6. 使用原 .venv 安装 requirements.txt，使用仓库附带的 frontend/dist。前端只有在修改源码或构建产物缺失时才安装开发依赖并重新构建。保留本机 DeepSeek 模型设置、Key 与原 Drive 目录，不复制示例配置覆盖真实配置。
-7. 启动前先校验：已有工具备份使用 maintenance.py verify --backup <第 3 步返回的本地路径>；手动备份则比较第 4 步所有原文件的 SHA-256 和词库统计。发现文件丢失、变化或版本不兼容时停止启动，保留新旧文件供检查。不要静默恢复快照覆盖可能更新过的数据。
-8. Windows 运行 install-desktop-shortcut.ps1，创建或更新指向当前目录的桌面快捷方式，再用 VocabularyBook.exe 一键启动；其他系统用原启动方式。刷新浏览器，确认原单词本与学习记录可读取、DeepSeek 设置保留、Drive 仍连接原目录。检查“添加后即时释义”和“添加时间：最新在前”选项。常规升级不需要新建测试词或发送收费 AI 请求；如确需生成测试，先使用我指定的一个词。
-9. 继续同步并检查结果；正常云端合并可能带来其他电脑的新词、评分或删除，不要因数量变化而用旧快照回灌云端。若失败，保留备份、日志和新旧提交，说明失败环节；必要时回退程序版本，恢复数据前先确认不会覆盖更新后的记录。
-10. 汇报旧/新提交、备份路径、文件一致性检查、原词库与学习记录检查、AI/同步状态和未解决事项。两台电脑各自更新程序即可继续同步，不需要重新授权已有 Drive 文件夹。
-```
-
-### 更新工具
-
-先停止应用，在项目目录运行（Windows）：
-
-```powershell
-.\.venv\Scripts\python.exe maintenance.py backup
-git pull --ff-only origin main
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe maintenance.py verify --backup ".backups\update-上一步返回的时间戳目录"
-.\start.bat
-```
-
-`verify` 的路径使用 `backup` 实际返回值。macOS / Linux 换成 `.venv/bin/python`。备份默认在本机 `.backups/`，包含私密配置，已加入 Git 忽略；工具拒绝对正在使用的缓存进行备份或校验。它检查备份与原文件的 SHA-256，并比对词汇、单词本、评分事件和 FSRS 统计；不会自动恢复文件、请求 AI 或写入云端。校验应在应用重新启动前执行。
-
-## Windows 一键启动
-
-完成安装后，双击桌面的 **云端词汇本** 图标，或安装目录中的 **VocabularyBook.exe**。启动器自动启动本机服务并打开浏览器，不显示命令窗口；重复点击会打开已有词汇本，不重复启动服务。图标为本项目设计的金色书页、云朵和绿色圆点。
-
-- 运行时在右下角系统托盘驻留。双击托盘图标重新打开页面；右键选择“安全停止词汇本并退出”时，会等待保存和同步任务退出。
-- 关闭浏览器页面不会停止服务。选择“仅退出启动器”也会保留服务，之后仍可重新打开启动器管理。
-- 桌面快捷方式缺失时，双击安装目录中的 `create-desktop-shortcut.bat`；Agent 也可运行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\install-desktop-shortcut.ps1`。它指向当前安装目录，无需管理员权限，不设置开机自启。
-- 不要把 exe 单独移出项目目录；可以把桌面快捷方式固定到开始菜单或任务栏。另一台电脑更新后，在它自己的安装目录创建快捷方式，沿用各自的数据与配置。
-- 如果以前通过 `start.bat` / `app.py` 启动，启动器可以打开已有页面；需要停止时仍关闭原启动窗口，再用图标启动即可由托盘管理。
-
-启动日志在本机 `.runtime/service.log`，不进入 Git 或 Drive。程序只连接本机 `127.0.0.1:1400`，会核对安装目录身份；如果端口被其他程序或另一份安装占用，会提示检查，不终止其他程序。现有 `start.bat` / `start.ps1` 继续可用。
-
-维护更新时先完成同步，再等待启动器停止，之后使用原有备份、快进更新和校验流程：
-
-```powershell
-$stopped = Start-Process .\VocabularyBook.exe -ArgumentList '--stop' -Wait -PassThru -WindowStyle Hidden
-if ($stopped.ExitCode -ne 0) { throw '词汇本尚未安全停止，请先检查原启动窗口。' }
-# 然后执行下方更新工具的 backup / pull / verify。
-```
-
-开发者可运行 `tools/windows/build-launcher.ps1`，用 Windows 自带的 .NET Framework 编译器重建启动器与图标。源码位于 `tools/windows/Launcher.cs`、`desktop_service.py`，图标含 SVG、PNG 和多尺寸 ICO。日常使用不需要编译或安装 Node.js。
-
-## Windows 快速启动
-
-安装 [Python 3.11+](https://www.python.org/downloads/)，然后：
-
-```powershell
-git clone https://github.com/Ruoyu-Tianyi/vocabulary-notebook.git
-cd vocabulary-notebook
-.\start.bat
-```
-
-首次运行自动创建虚拟环境并安装依赖。前端构建产物已包含在仓库中，日常使用不需要 Node.js。浏览器访问 **http://127.0.0.1:1400**。
-
-已安装依赖可直接运行 `.venv\Scripts\python.exe app.py`。升级后安装新依赖：`powershell -ExecutionPolicy Bypass -File .\start.ps1 -Install`。
-
-macOS / Linux：
+### 安装并启动
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+git clone https://github.com/Eric-Zhou-0302/vocove.git
+cd vocove
+python -m pip install -r requirements.txt
+
+# 仅首次创建配置，不覆盖已有设置。
+test -f config.json || cp config.json.example config.json
 python app.py
 ```
 
-## DeepSeek API 配置
+打开 [http://localhost:1400](http://localhost:1400)。`python app.py` 会直接托管 `frontend/dist`，无需另外启动前端服务器。
 
-从 [DeepSeek 平台](https://platform.deepseek.com/api_keys) 创建 API Key，在“同步与备份 → DeepSeek API 词汇补全”填写并保存。Key 写入本机 `.secrets/deepseek.json`，页面不回显，且不进入 Drive 或 Git。每台电脑各自配置；修改后立即生效。
+### 配置补全服务
 
-也支持启动进程的环境变量 `DEEPSEEK_API_KEY`、`DEEPSEEK_MODEL`。优先级为环境变量 > 本机设置页 > `config.json`。`config.json.example` 可复制为 `config.json`，示例中的空 Key 不影响启动。
+- 内置 **15 个供应商**：Ollama、DeepSeek、OpenAI、Anthropic / Claude、Google Gemini、通义千问 / 百炼、Kimi / Moonshot、智谱 GLM、硅基流动、OpenRouter、Groq、Mistral AI、Together AI、Fireworks AI、xAI / Grok。
+- **配置流程**：选择供应商 → 输入密钥或设置对应后端环境变量 → 获取模型目录或手动添加模型 ID → 可选测试连接 → 保存并使用。每家配置独立保留；仅保存当前选择的供应商。保存不依赖目录接口成功，目录包含非对话模型时请选择文本生成模型。
+- **Ollama**：先运行 `ollama serve`，使用 `ollama pull 模型名称` 下载模型，再获取已安装模型。默认根地址 `http://localhost:11434`；兼容旧版 `/api/generate` 地址。远程服务支持可选 Bearer 密钥。
+- **自定义 API**：支持 OpenAI Chat Completions、Anthropic Messages 和 Ollama 原生协议。填写 API 根地址（保留 `/v1` 等版本路径），可选密钥、模型 ID 和 5–600 秒生成超时。内置供应商也可覆盖地址以适配地区端点或网关；Coding Plan 必须使用供应商对应地址。
+- **密钥**：优先使用手动保存的密钥，否则读取界面列出的环境变量。密钥仅存于本机 `config.json`，接口不回传；留空保留旧值，勾选清除后移除已存值。环境变量需在启动后端前设置。重新输入新密钥会取消清除操作；纯空格按留空处理。修改地址时须重新输入密钥，避免旧密钥自动发送到其他服务。
+- **验证**：获取目录不产生文本生成费用；“测试连接与模型”会发出一条简短真实生成请求，可能计费。自动健康检查只查询目录，云端未列出的模型显示待测试，不等同于模型下线。旧 Ollama / DeepSeek 配置无需手动迁移。
 
-默认使用当前官方模型名 `deepseek-flash`，请求 `https://api.deepseek.com/chat/completions`，采用 JSON Output 并关闭深度思考。可在设置页填写其他账号可用模型。[官方接入说明](https://api-docs.deepseek.com/) · [JSON 输出](https://api-docs.deepseek.com/guides/json_mode/) · [思考开关](https://api-docs.deepseek.com/guides/thinking_mode/)
+完整 JSON 见 [`config.json.example`](config.json.example)。手动编辑时：
 
-补全会把当前单词与单词本的领域说明发送给 DeepSeek，并按其 API 规则计费；不会上传整本词库或复习历史。连接检查通过 `GET /models` 完成，不生成词汇。没有 Key、断网、鉴权失败或额度不足时，手动保存、同步和已有词汇复习仍可用；恢复后点击“补全缺失”。从旧 Ollama 版本更新时会在内存中切换到 DeepSeek，保留原有同步与复习配置。
+| 字段 | 用法 |
+| --- | --- |
+| `provider` | 当前供应商 ID，如 `anthropic`、`qwen` 或 `custom`；可选 ID 见配置示例的对象名称 |
+| `last_builtin_provider` | 程序自动记录最近保存的内置供应商，用于切换标签后的恢复，无需手动填写 |
+| `ollama` / `deepseek` | 为兼容旧配置，这两家继续使用顶层对象 |
+| `providers.<供应商 ID>` | 其他供应商及 `custom` 的独立配置对象 |
+| `base_url` | API 根地址，保留版本路径；Ollama 也兼容旧 `url` 字段 |
+| `api_key` | 留空时读取对应环境变量；自定义服务及 Ollama 可不认证 |
+| `model` | 实际调用的完整模型 ID；示例中的云端模型留空，启用前需填写 |
+| `models` | 设置页中保留的模型目录；可留空，不限制手动填写的 `model` |
+| `timeout` | 生成请求超时秒数，设置页允许 5–600，默认 120 |
+| `protocol` | 仅自定义 API 需要：`openai`、`anthropic` 或 `ollama` |
 
-## 同步方式一：Drive 桌面同步文件夹（推荐）
+例如启用 Claude：将 `provider` 改为 `anthropic`，填写 `providers.anthropic.model`，并填写其 `api_key` 或设置 `ANTHROPIC_API_KEY`。未启用供应商的空模型和密钥不影响启动。桌面首次启动仍默认使用 Ollama，其他供应商预设由程序目录提供，无需手工复制整份示例。
 
-无需 Google Cloud 项目和 OAuth 客户端。
 
-1. 两台电脑安装[桌面版 Google Drive](https://support.google.com/drive/answer/10838124?hl=zh-Hans)，登录同一个私人账号。
-2. 在“我的云端硬盘”新建专用文件夹，例如 `Drive Vocabulary Book`，将它设为“可离线使用”。
-3. 进入“同步与备份”，填写本机绝对路径，例如 `G:\我的云端硬盘\Drive Vocabulary Book`，点击“连接同步文件夹”。第二台电脑选择**同一个云端文件夹**，本机盘符可以不同。
-4. 各自在本机运行程序。应用默认每 30 秒读取并合并变更。
 
-**“待写入文件夹为 0”表示变更已交给 Drive 桌面版；实际上传/下载由桌面版完成。关闭电脑前还应确认 Drive 的同步状态为已完成。** 另一台电脑收到文件后，应用下一轮自动合并。
+网页保存配置后立即生效；已有 Key 不会回传浏览器，留空会保留原值。若直接修改 `config.json`，需重启后端。配置结构见 [config.json.example](config.json.example)。
 
-两台电脑的程序目录、`.venv`、`.secrets` 和 `words.json` 分别留在本机。云端目录只保存 `library.json` 身份标识及不可变的 `vocabulary-*.json` 变更文件。不要将整个项目或 `.secrets` 放入同步目录，不要手动编辑/删除变更文件。
+未连接模型时，仍可浏览已有词库和复习。可选的拼写校验需要先安装系统 Enchant 库及 `en_US` 词典，再运行 `python -m pip install -r requirements-spellcheck.txt`；详见 [PyEnchant 安装说明](https://pyenchant.github.io/pyenchant/install.html)。
 
-ChatGPT 的 Drive 插件可帮助聊天读写文件，这个独立应用不依赖 ChatGPT 持续运行，也不读取或导出聊天插件的授权令牌。[OpenAI 插件授权说明](https://developers.openai.com/plugins/build/auth)
+旧版用户升级前请先备份数据，迁移与回退说明见[旧词库备份与升级](docs/DRIVE_SYNC.md#旧词库备份与升级)。
 
-## 同步方式二：Drive API 直连（可选）
+## 日常使用
 
-适合不安装 Drive 桌面版的电脑。与文件夹方式二选一，在设置中断开后可切换。
+### 记录与整理
 
-1. 在 [Google Cloud](https://console.cloud.google.com/apis/library/drive.googleapis.com) 创建项目并启用 Google Drive API。
-2. 配置 OAuth 同意屏幕，个人测试时把自己的账号加入测试用户。
-3. 创建 **桌面应用** OAuth 客户端，下载 JSON。
-4. 在设置中导入 JSON，点击“连接 Google Drive”→“继续 Google 授权”。
-5. 两台电脑使用**同一客户端 JSON、同一 Google 账号**各自授权，不要复制 `token.json`。
+添加单词时选择单词本并保存，补全结果会显示在最近记录中。补全期间可继续使用应用；网络、授权或模型响应异常时，记录会保留供重试，也可在详情页手动编辑。
 
-只申请 `drive.appdata` 权限，数据存于应用专属的隐藏 `appDataFolder`，不出现在普通 Drive 文件列表，也不访问其他文件。[Google 文档](https://developers.google.com/workspace/drive/api/guides/appdata)
+「整理单词」支持跨本加入或移动：加入会保留原词，目标本从新词开始复习；移动会保留复习进度，目标本已有同词时停止整批操作，避免覆盖。
 
-授权采用本机回调、随机 state 和 PKCE。令牌仅保存在 `.secrets/token.json`。Google 测试应用的授权可能按 Google 发布状态/策略失效；应用会保留离线修改并提示重新授权。账户空间、API 配额和网络仍适用。
+### 复习与快捷键
 
-## 两台电脑如何合并
+「今日复习」根据到期记录和每日额度组成队列。先回忆再翻面评分，选择「重来」的卡片会回到本轮队尾。默认每天引入 20 个新词，各本共用额度，可通过 `config.json` 的 `srs.daily_new_limit` 修改。
 
-```text
-电脑 A：本地界面 → 原子保存缓存 → 追加变更文件
-                                   ↕ Google Drive
-电脑 B：本地界面 ← 合并并重算 FSRS ← 读取变更文件
-```
+「全部单词」按 A–Z 或随机顺序翻阅，不提交评分、不消耗新词额度。
 
-- 不用整份词库覆盖云端。每个变更有独立 ID，重试、重启和重复传输不会重复评分。
-- 不同字段的编辑同时保留。同一字段同时编辑，按 Lamport 时钟、设备 ID、操作 ID 的固定顺序选择一致结果，不以电脑墙上时间决定先后。
-- 每次复习是独立事件，按时间与事件 ID 排序重算 FSRS，两台电脑的评分均保留。请保持系统时钟正确。
-- 删除优先于旧设备的编辑和评分，避免单词复活。重新添加会生成新 ID。
-- 同步为最终一致，两个设备同时写入后，下一轮读取收敛；尚未上传的修改不会出现在另一台电脑。
-- 两台电脑离线分别新建同一拼写时，保留两条独立记录，避免误合并课程含义与学习记录。同步后可检查并删除重复项。
-- 当前不自动压缩历史或清理删除标记，以支持长期离线设备。适合私人词库，变更文件会随使用增长。
+| 快捷键 | 用途 |
+| --- | --- |
+| `/` | 返回单词列表并选中搜索框 |
+| `N` | 打开添加单词 |
+| `?` | 打开或关闭帮助 |
+| `Space` / `Enter` | 复习时显示答案 |
+| `1` / `2` / `3` / `4` | 显示答案后选择重来、困难、良好、简单 |
+| `←` / `→` | 全部单词模式中返回上一张，或显示答案后进入下一张 |
+| `Esc` | 清空搜索、关闭弹窗或菜单，具体行为取决于当前位置 |
 
-## 备份、迁移与恢复
+快捷键会在输入框、下拉框和其他弹窗中暂停或按场景处理；输入法候选、修饰键组合和长按不会被误触。完整规则可在应用内按 `?` 查看。
 
-“同步与备份”里的**完整备份**包含全部单词本、字段变更、删除标记和每次复习事件。导入时合并，不覆盖现有数据，也保留删除标记。
+### 导出与完整备份
 
-从原项目迁移：导入原 `words.json`，或首次启动前复制到本项目根目录。旧 FSRS 状态作为基线保留；旧版本未记录的逐次评分无法补造。自动迁移前保留 `words.json.legacy.bak`。原格式导入时，已有 ID 跳过。
+| 入口 | 内容与用途 |
+| --- | --- |
+| 单词列表 → PDF / CSV / JSON | 导出当前筛选下的词汇内容，适合打印、整理与二次处理 |
+| 同步与备份 → 下载完整备份 | 保存所有单词本、字段操作、删除标记及评分事件，适合迁移与恢复 |
+| 同步与备份 → 导入备份 | 合并导入完整备份或旧词库，不覆盖整个现有词库 |
 
-单词列表的 JSON/CSV/PDF 导出只含当前筛选结果，需要全部历史时请用设置中的完整备份。本地每 10 分钟另存 `words.json.bak`。损坏文件会保留并停止读取，不会用空词库覆盖云端。
+**普通列表导出不能替代完整学习历史备份。**
 
-## 配置与安全
-
-```json
-{
-  "provider": "deepseek",
-  "deepseek": {"model": "deepseek-flash", "api_key": ""},
-  "srs": {"daily_new_limit": 20},
-  "sync": {"interval_seconds": 30, "credentials_dir": ".secrets"}
-}
-```
-
-只监听 `127.0.0.1:1400`，校验实际连接地址、Host 与修改请求来源；开发脚本和前端开发服务器也仅监听本机，后端关闭代理头解析；不用于公开部署。一个本地缓存只允许一个进程打开。真实配置、词库、备份和令牌被 Git 忽略。同步文件为 JSON，文件夹模式沿用文件夹的现有共享权限，请使用私人文件夹。
-
-测试可用 `VOCAB_DATA_FILE` 指定独立本地缓存。不要把个人词库、令牌或完整备份提交到公共仓库。
-
-## 开发与验证
+PDF 中文和音标导出需要包含相应字形的静态 TTF / OTF 字体。macOS 默认尝试系统 Arial Unicode 字体，其他环境可手动指定：
 
 ```bash
-pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest -q
-cd frontend
-npm ci
-npm run build
+VOCOVE_CJK_FONT=/absolute/path/to/font.ttf python app.py
 ```
 
-前端修改后必须重新构建。上游误提交的 `node_modules` 已从版本管理移除。测试覆盖双设备编辑与复习合并、删除、离线重试、文件夹重启、Drive HTTP 模拟及备份恢复。真实 API 直连需要自己的 Google OAuth 客户端。
+不支持 TTC 字体集合或可变字体。字体不可用、缺少字形或单条词汇超出一页容量时会明确报错，可改用 CSV / JSON。项目不打包第三方字体，使用前请确认字体授权。
 
-核心扩展：`sync_storage.py`（变更与 FSRS 重放）、`drive_sync.py`（文件夹、Drive API、OAuth）、`instance_lock.py`（本地单进程保护）、`frontend/src/Books.jsx` 和 `frontend/src/pages/Settings.jsx`。
+## 开发与贡献
 
-## 同步期间的编辑与补全
+开发环境、等价命令和兼容性约定见[贡献指南](CONTRIBUTING.md)。常用检查命令：
 
-- 云端变更到达时，详情页刷新已保存的内容，保留正在编辑的释义、音标与例句，并显示提示。点击保存会提交编辑框中的内容；取消则查看最新同步结果。如果单词被远端删除，保留草稿并提示先复制内容。
-- AI 请求进行时，若单词移动到其他本，或课程名称、说明改变，旧结果会丢弃并提示重新补全，避免把原课程的解释写入新课程；不会自动再发起收费请求。
-- UTC 时间支持 `Z` 和 `+00:00`，旧版不带时区的时间沿用北京时间规则。词库与评分记录不因兼容性修复而重写。
+```bash
+make check   # 静态检查、前后端及桌面测试、前端构建
+make lint    # 仅静态检查
+make test    # 后端、前端与桌面测试
+make build   # 更新 frontend/dist
+```
 
-本机访问校验使用连接来源，不采用客户端填写的 `X-Forwarded-For`。自行启动 uvicorn 时也请使用 `--host 127.0.0.1 --no-proxy-headers`，不要通过局域网代理暴露本应用。
+**修改前端后必须构建并一并提交 `frontend/dist`**，否则 `python app.py` 仍会显示旧页面。CI 会检查提交的前端构建是否最新。
 
-补全完成通知会分别发送给每个已连接页面，可以同时打开添加页和列表页查看释义。
+<details>
+<summary>开发模式与热更新</summary>
 
+安装开发依赖：
 
-## 与原项目同步更新
+```bash
+python -m pip install -r requirements-dev.txt
+npm --prefix frontend ci
+npm --prefix desktop ci --ignore-scripts
+```
 
-已合并原项目 2026-10-18 的模型设置与 DeepSeek 模型发现功能，保留原作者提交历史。在现有“同步与备份”页面刷新可用模型后选择并保存；失效模型会提示重新选择，网络失败不会误报模型下线。
-本分支继续使用 DeepSeek，密钥留在各电脑的 `.secrets` 或环境变量，沿用原 Drive、单词本与学习记录。
-维护时先在独立分支合并 `upstream/main`、解决业务差异、测试并重建前端，再合入本分支 `main`；不要用上游文件整套替换本项目，也不要强制重置已有安装。
+需要热更新时，在两个终端分别运行：
 
+```bash
+./.venv/bin/python -m uvicorn app:app --host 127.0.0.1 --port 1400 --no-proxy-headers --timeout-graceful-shutdown 5 --reload
+```
 
-## 手误与无法识别的输入
+```bash
+npm --prefix frontend run dev -- --host 127.0.0.1
+```
 
-模型明确返回三个空字段或词典确认拼写有误时，本次新建且未更改的空词条会自动移除，即时记忆区显示原因，可更正拼写后重新添加。删除标记也会通过 Drive 同步，旧电脑不会把该输入恢复出来。
-网络、API Key、余额、限流或回复格式异常不会触发自动删除，仍可重试。已有词条、已编辑/移动/复习的词条及程序重启前的记录不自动清理。若 AI 无法识别某个专业术语，请检查或完善输入后重试。
+开发页面为 [http://localhost:5173](http://localhost:5173)。不要同时启动两个后端操作同一份词库；实例锁会拒绝重复启动。
 
+</details>
 
-## 手机和平板私人访问
+自动测试使用临时目录和模拟外部请求，不等于真实 OAuth、模型调用或跨电脑同步验收。
 
-可将常用电脑作为服务器，通过 HTTPS 私人域名访问同一份词库。手机适配、课程列表、中文搜索和复习直接复用桌面功能；可通过浏览器“添加到主屏幕”快捷打开。电脑必须保持运行和联网。
+## 反馈与许可
 
-远程入口使用独立网关和私人账号密码登录，可通过 Tailscale Funnel 与 Vercel 接入自定义域名，保留现有 DNS 平台；不依赖保密网址，不开放模型、同步凭据或本机文件管理。默认不开启公网访问，部署前需要配置域名、隧道和身份验证。详见 [私人访问部署指南](docs/PRIVATE_ACCESS.md)。
+问题反馈请使用 [Issue 模板](https://github.com/Eric-Zhou-0302/vocove/issues/new/choose)，提交改动前请阅读[贡献指南](CONTRIBUTING.md)。
 
-## 2026-10-25 上游同步
+本项目采用 [MIT License](LICENSE)，Copyright © 2026 Eric Zhou。
 
-整合上游 v1.2.0 的单词本管理、新导航、同步可靠性、复习顺序、PDF 导出和维护检查。继续保留本分支的 DeepSeek 本机密钥存储、课程 AI 上下文、中文搜索、一键启动及安全备份更新。运行要求已调整为 Python 3.11+；更新时先停服备份，再安装依赖并校验数据。
+### 分类单词本与语境单词本
 
-## 上游 v1.3.0 整合
+在「我的单词本 → 新建单词本」选择类型：
 
-已同步 Vocove 的响应式布局、系统主题、键盘帮助及独立桌面应用源码。现有服务器仍使用原安装目录和 Windows 启动器，手机入口不变。上游桌面版采用独立数据目录，不能把安装官方桌面版当成此 fork 的就地更新；官方应用内更新也不会保留本 fork 的私人网关功能。继续使用本文的 Agent 更新流程。
+- **分类单词本**：按课程、主题或目标整理，继续使用通用释义。即使名称是「金融英语」，也不会自动启用金融语境。
+- **语境单词本**：可选金融、法律、医药。所有供应商均使用内置专业提示词，优先输出相应专业释义和例句；没有专业义项时仍如实解释普通含义。
+
+类型创建后固定，名称和说明仍可修改。同一专业可创建多本；要使用另一种语境，请另建单词本。新增词条不会自动从语境本复制释义，也不会把其他本的内容套入语境本；显式「复制」仍保留原释义。分类本之间保留原有的释义复用行为。已有释义、移动/复制的内容和学习记录不会自动重写，补全只填空缺字段。
+
+语境类型随单词本身份同步，Drive v1 操作字段及复习算法不变；导出、恢复备份也保留类型。旧客户端仍可读取和复习，但只能按通用语境补全，因此请在所有需要专业补全的设备上更新客户端。
+
+[查看语境单词本界面示例](docs/images/context-notebooks.png)（演示数据）。

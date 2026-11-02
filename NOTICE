@@ -1,15 +1,12 @@
-Drive Vocabulary Book / 云端词汇本
+Vocove — Tianyi extension fork
 
-This project is a derivative of Vocabulary Notebook by Eric Zhou:
-https://github.com/Eric-Zhou-0302/vocabulary-notebook
-Upstream base: 173b2887265439a9fd578a351babf0be61181cfa
-Original license: MIT, as stated in the upstream README.
+Based on Vocove by Eric Zhou, licensed under MIT:
+https://github.com/Eric-Zhou-0302/vocove
+Upstream baseline: ddae801 (v1.5.1), synchronized 2026-11-02.
+The upstream copyright, license and Git history are retained.
 
-The upstream FastAPI application, React interface, AI vocabulary prompt,
-FSRS implementation, exports, and regression tests form the foundation.
-The original Git history is retained. See docs/UPSTREAM_README.md.
-
-Ruoyu-Tianyi's extensions add Google Drive synchronization, multiple notebooks,
-immutable learning histories, conflict-safe merging, DeepSeek API configuration,
-Windows startup, and sync/backup settings. This is an independently maintained
-derivative; no affiliation with or endorsement by the upstream author is implied.
+This fork retains optional authenticated private access, normalized translation
+search, backup/migration helpers and DeepSeek dictionary request improvements.
+Notebook contexts and stale-result protection contributed by this fork are now
+part of upstream. Desktop design and packaging are maintained from upstream.
+See docs/FORK.md for remaining differences and distribution policy.

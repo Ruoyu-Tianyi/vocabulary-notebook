@@ -5,8 +5,8 @@ const path = require('node:path')
 const { createHash } = require('node:crypto')
 const semver = require('semver')
 
-const RELEASES_API = 'https://api.github.com/repos/Eric-Zhou-0302/vocove/releases?per_page=100'
-const RELEASE_PREFIX = 'https://github.com/Eric-Zhou-0302/vocove/releases/download/'
+const RELEASES_API = 'https://api.github.com/repos/Ruoyu-Tianyi/vocabulary-notebook/releases?per_page=100'
+const RELEASE_PREFIX = 'https://github.com/Ruoyu-Tianyi/vocabulary-notebook/releases/download/'
 const ASSET_HOSTS = new Set(['github.com', 'release-assets.githubusercontent.com', 'objects.githubusercontent.com', 'github-releases.githubusercontent.com'])
 const METADATA_LIMIT = 8 * 1024 * 1024
 const MAX_INSTALLER_SIZE = 2 * 1024 * 1024 * 1024

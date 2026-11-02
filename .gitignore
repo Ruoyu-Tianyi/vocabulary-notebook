@@ -23,9 +23,7 @@ config.json
 words.json.legacy.bak
 words.json.lock
 
-*.lock
-words.json.*
-frontend/pnpm-lock.yaml
-.venv-*/
-.backups/
 .runtime/
+.backups/
+.vercel/
+config.json.pre-v151.bak

@@ -16,8 +16,9 @@ function fixture(version = '1.3.0-beta') {
   }
   const calls = []
   const quitEvents = new EventEmitter()
-  updater.quitAndInstall = (...args) => { calls.push(args); setImmediate(() => quitEvents.emit('before-quit-for-update')) }
-  const source = new WindowsUpdateSource(updater, version, { quitEvents, installTimeout: 20 })
+  // 由测试显式发送退出事件，不让 CI 调度速度参与成功/超时的竞争。
+  updater.quitAndInstall = (...args) => { calls.push(args) }
+  const source = new WindowsUpdateSource(updater, version, { quitEvents })
   return { updater, source, token, calls, quitEvents }
 }
 
@@ -38,21 +39,32 @@ test('Windows uses the checked download token, forwards progress, removes listen
   assert.equal(await f.source.download(p => progress.push(p.percent)), '/isolated/update.exe')
   assert.deepEqual(progress, [50])
   assert.equal(f.updater.listenerCount('download-progress'), 0)
-  await f.source.install()
+  const installing = f.source.install()
   assert.deepEqual(f.calls, [[false, true]])
+  assert.equal(f.quitEvents.listenerCount('before-quit-for-update'), 1)
+  f.quitEvents.emit('before-quit-for-update')
+  await installing
+  assert.equal(f.quitEvents.listenerCount('before-quit-for-update'), 0)
   f.source.dispose()
   assert.equal(f.token.cancelled, true)
   assert.equal(f.updater.listenerCount('error'), 0)
 })
 
-test('Windows surfaces installation errors or missing quit signal instead of leaving a stopped backend window', async () => {
+test('Windows surfaces installation errors or missing quit signal instead of leaving a stopped backend window', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
   const f = fixture()
   f.updater.quitAndInstall = () => f.updater.emit('error', new Error('spawn failed'))
   await assert.rejects(f.source.install(), /spawn failed/)
   assert.equal(f.quitEvents.listenerCount('before-quit-for-update'), 0)
   f.updater.quitAndInstall = () => {}
-  await assert.rejects(f.source.install(), /未能启动/)
+  const timedOut = assert.rejects(f.source.install(), /未能启动/)
+  t.mock.timers.tick(9999)
+  assert.equal(f.quitEvents.listenerCount('before-quit-for-update'), 1)
+  t.mock.timers.tick(1)
+  await timedOut
   assert.equal(f.quitEvents.listenerCount('before-quit-for-update'), 0)
+  assert.equal(f.source.rejectInstall, null)
+  f.source.dispose()
 })
 
 test('Windows rejects invalid, equal and older available versions and tolerates emitted request errors', async () => {

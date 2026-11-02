@@ -10,7 +10,7 @@ const { GitHubDmgUpdateSource } = require('../lib/github-dmg-update.cjs')
 
 const content = Buffer.from('isolated installer fixture')
 const digest = createHash('sha256').update(content).digest('hex')
-const repo = 'https://github.com/Eric-Zhou-0302/vocove/releases/download'
+const repo = 'https://github.com/Ruoyu-Tianyi/vocabulary-notebook/releases/download'
 
 function release(version = '1.4.0', options = {}) {
   const name = `Vocove-${version}-mac-${options.arch || 'arm64'}.dmg`
@@ -60,7 +60,7 @@ test('missing compatible architecture produces a useful error instead of selecti
 })
 
 test('rejects an asset from another repository or host before downloading', async t => {
-  for (const malicious of ['https://evil.example/installer.dmg', `${repo.replace('vocove', 'another-repo')}/v1.4.0/Vocove-1.4.0-mac-arm64.dmg`]) {
+  for (const malicious of ['https://evil.example/installer.dmg', `${repo.replace('vocabulary-notebook', 'another-repo')}/v1.4.0/Vocove-1.4.0-mac-arm64.dmg`]) {
     const entry = release()
     entry.assets[0].browser_download_url = malicious
     const f = await fixture(t, [entry])
@@ -170,4 +170,35 @@ test('rate limiting is explained and a failed recheck clears the previous select
   f.responses.push(new Response(null, { status: 403 }))
   await assert.rejects(f.source.check(), /限制了更新请求/)
   await assert.rejects(f.source.download(), /先检查/)
+})
+
+
+test('rejects unsafe redirect schemes, credentials, ports, deceptive hosts and redirect loops', async t => {
+  for (const location of [
+    'http://github.com/installer', 'file:///tmp/installer',
+    'https://github.com.evil.example/installer', 'https://user:pass@github.com/installer',
+    'https://github.com:8443/installer',
+  ]) {
+    const f = await fixture(t)
+    await f.source.check()
+    f.responses.push(new Response(null, { status: 302, headers: { location } }))
+    await assert.rejects(f.source.download(), /非官方地址/)
+    assert.equal(f.requests.length, 2)
+    assert.deepEqual(await fs.readdir(f.cacheDir), [])
+  }
+  const loop = await fixture(t)
+  await loop.source.check()
+  for (let i = 0; i < 6; i++) loop.responses.push(new Response(null, {
+    status: 302, headers: { location: 'https://github.com/loop' },
+  }))
+  await assert.rejects(loop.source.download(), /重定向无效/)
+  assert.equal(loop.requests.length, 7)
+  assert.deepEqual(await fs.readdir(loop.cacheDir), [])
+})
+
+test('does not follow redirects from the releases API', async t => {
+  const f = await fixture(t)
+  f.responses[0] = new Response(null, { status: 302, headers: { location: 'https://github.com/api' } })
+  await assert.rejects(f.source.check(), /重定向无效/)
+  assert.equal(f.requests.length, 1)
 })

@@ -34,9 +34,10 @@ export default function ModelStatus({ onProblemChange } = {}) {
 
   const { provider, status } = health || {}
   const connected = status === 'connected'
-  const problem = health !== null && !connected
-  const providerLabel = provider === 'ollama' ? 'Ollama' : provider === 'deepseek' ? 'DeepSeek' : '模型服务'
+  const problem = health !== null && !connected && status !== 'unverified'
+  const providerLabel = health?.provider_name || provider || '模型服务'
   const label = health === null ? '检查连接…'
+    : status === 'unverified' ? `${providerLabel} · 请在设置中测试模型`
     : status === 'model_unavailable' ? `模型 ${health.model} 已不可用 · 请重新配置`
       : connected ? `${providerLabel} 已连接` : `${providerLabel} 无法连接 · 查看设置`
 

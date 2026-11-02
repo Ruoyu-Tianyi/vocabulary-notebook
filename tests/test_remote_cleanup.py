@@ -24,7 +24,7 @@ def test_remote_edit_then_revert_is_not_treated_as_untouched(tmp_path, monkeypat
         storage.commit(remote,data)
         storage.merge(app.DATA_FILE,list(storage.read(remote)['_sync']['operations'].values()))
         before=app.DATA_FILE.read_bytes()
-        async def empty(_word, context=""): return '', '', ''
+        async def empty(_word): return '', '', ''
         monkeypatch.setattr(app,'enrich_word',empty)
         worker=asyncio.create_task(app._enrich_worker())
         try:
