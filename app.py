@@ -409,7 +409,9 @@ Reply ONLY with a JSON object, no other text:
             values = config.get_deepseek_config()
         else:
             values = config.get_model_config(provider)
-        text = await model_providers.complete(model_providers.resolve(provider, values), prompt)
+        text = await model_providers.complete(
+            model_providers.resolve(provider, values), prompt, json_output=True
+        )
 
         match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
         if not match:

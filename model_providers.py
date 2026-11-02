@@ -50,7 +50,7 @@ def resolve(provider, values):
     if protocol not in ('openai', 'anthropic', 'ollama'):
         raise ValueError('不支持的 API 协议')
     key = values.get('api_key', '').strip() or os.environ.get(preset['env_key'], '').strip()
-    return {**values, 'protocol': protocol,
+    return {**values, 'provider': provider, 'protocol': protocol,
             'base_url': normalize_url(values.get('base_url') or values.get('url') or preset['base_url'], protocol),
             'api_key': key}
 
@@ -87,7 +87,7 @@ async def discover(settings):
     return sorted(models)
 
 
-async def complete(settings, prompt):
+async def complete(settings, prompt, *, json_output=False):
     protocol = settings['protocol']
     payload = {'model': settings['model'], 'stream': False}
     if protocol == 'ollama':
@@ -98,6 +98,10 @@ async def complete(settings, prompt):
         payload['messages'] = [{'role': 'user', 'content': prompt}]
         if protocol == 'anthropic':
             payload['max_tokens'] = 2048
+        elif settings.get('provider') == 'deepseek' and json_output:
+            # Dictionary lookups should not inherit DeepSeek's default thinking mode.
+            payload.update(thinking={'type': 'disabled'},
+                           response_format={'type': 'json_object'}, max_tokens=2048)
     async with httpx.AsyncClient(timeout=settings.get('timeout', 120)) as client:
         response = await client.post(settings['base_url'] + path, json=payload, headers=headers(settings))
         response.raise_for_status()

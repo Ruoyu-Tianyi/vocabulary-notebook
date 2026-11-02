@@ -78,6 +78,7 @@ python app.py
 - **Ollama**：先运行 `ollama serve`，使用 `ollama pull 模型名称` 下载模型，再获取已安装模型。默认根地址 `http://localhost:11434`；兼容旧版 `/api/generate` 地址。远程服务支持可选 Bearer 密钥。
 - **自定义 API**：支持 OpenAI Chat Completions、Anthropic Messages 和 Ollama 原生协议。填写 API 根地址（保留 `/v1` 等版本路径），可选密钥、模型 ID 和 5–600 秒生成超时。内置供应商也可覆盖地址以适配地区端点或网关；Coding Plan 必须使用供应商对应地址。
 - **密钥**：优先使用手动保存的密钥，否则读取界面列出的环境变量。密钥仅存于本机 `config.json`，接口不回传；留空保留旧值，勾选清除后移除已存值。环境变量需在启动后端前设置。重新输入新密钥会取消清除操作；纯空格按留空处理。修改地址时须重新输入密钥，避免旧密钥自动发送到其他服务。
+- **DeepSeek 词汇补全**：词典请求显式关闭思考模式、使用 JSON Output，并限制输出为 2048 tokens，避免简单查词默认进入思考模式。仅作用于内置 DeepSeek 的词汇补全；连接测试仍使用普通文本请求，其他供应商和自定义 API 不附加这些专用参数。
 - **验证**：获取目录不产生文本生成费用；“测试连接与模型”会发出一条简短真实生成请求，可能计费。自动健康检查只查询目录，云端未列出的模型显示待测试，不等同于模型下线。旧 Ollama / DeepSeek 配置无需手动迁移。
 
 完整 JSON 见 [`config.json.example`](config.json.example)。手动编辑时：

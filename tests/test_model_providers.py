@@ -59,3 +59,63 @@ def test_anthropic_pagination(monkeypatch):
                                         'has_more': not second, 'last_id': 'first'})
     monkeypatch.setattr(httpx, 'AsyncClient', lambda **kwargs: original(transport=httpx.MockTransport(handle), **kwargs))
     assert asyncio.run(providers.discover(providers.resolve('anthropic', {'api_key': 'test'}))) == ['first', 'second']
+
+
+@pytest.mark.parametrize('provider,json_output', [
+    ('deepseek', True), ('deepseek', False), ('openai', True), ('custom', True),
+])
+def test_dictionary_options_are_limited_to_deepseek_enrichment(monkeypatch, provider, json_output):
+    original = httpx.AsyncClient
+    seen = []
+
+    def handle(request):
+        body = json.loads(request.content)
+        seen.append(body)
+        assert body['model'] == 'deepseek-flash'
+        assert body['stream'] is False
+        assert body['messages'] == [{'role': 'user', 'content': 'Return JSON'}]
+        if provider == 'deepseek' and json_output:
+            assert body['thinking'] == {'type': 'disabled'}
+            assert body['response_format'] == {'type': 'json_object'}
+            assert body['max_tokens'] == 2048
+        else:
+            assert 'thinking' not in body
+            assert 'response_format' not in body
+            assert 'max_tokens' not in body
+        return httpx.Response(200, json={'choices': [{'message': {'content': 'OK'}}]})
+
+    monkeypatch.setattr(httpx, 'AsyncClient',
+                        lambda **kw: original(transport=httpx.MockTransport(handle), **kw))
+    # A matching model name/host must not enable provider-specific options for custom APIs.
+    settings = providers.resolve(provider, {'model': 'deepseek-flash', 'api_key': 'synthetic',
+                                            'base_url': 'https://api.deepseek.com'})
+    assert asyncio.run(providers.complete(settings, 'Return JSON', json_output=json_output)) == 'OK'
+    assert len(seen) == 1
+
+
+def test_enrichment_requests_deepseek_dictionary_options(monkeypatch):
+    import app
+
+    original = httpx.AsyncClient
+    seen = []
+
+    def handle(request):
+        body = json.loads(request.content)
+        seen.append(body)
+        assert request.url == 'https://api.deepseek.com/chat/completions'
+        assert body['thinking'] == {'type': 'disabled'}
+        assert body['response_format'] == {'type': 'json_object'}
+        assert body['max_tokens'] == 2048
+        assert 'contract' in body['messages'][0]['content']
+        return httpx.Response(200, json={'choices': [{'message': {'content': json.dumps({
+            'phonetic': '/test/', 'definition': 'n. 合同', 'example': 'A contract.'
+        })}}]})
+
+    monkeypatch.setattr(app.config, 'get_provider', lambda: 'deepseek')
+    monkeypatch.setattr(app.config, 'load_config', lambda: {
+        'provider': 'deepseek', 'deepseek': {'model': 'deepseek-flash', 'api_key': 'synthetic'}
+    })
+    monkeypatch.setattr(httpx, 'AsyncClient',
+                        lambda **kw: original(transport=httpx.MockTransport(handle), **kw))
+    assert asyncio.run(app.enrich_word('contract')) == ('/test/', 'n. 合同', 'A contract.')
+    assert len(seen) == 1
