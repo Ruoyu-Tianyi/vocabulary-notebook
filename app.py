@@ -399,6 +399,8 @@ primary meaning first (e.g., "pharmacy" — "药店" comes before
 Reply ONLY with a JSON object, no other text:
 {{"phonetic": "/.../", "definition": "n. 释义一，释义二\\nvt. 及物释义", "example": "..."}}'''
     if context:
+        # Domain books must not inherit the general dictionary ordering/examples.
+        prompt = prompt.replace('When listing multiple definitions, put the most common /\nprimary meaning first (e.g., "pharmacy" — "药店" comes before\n"药学"; "bank" — "银行" comes before "河岸").', "Only include established senses within the selected domain, ordered by relevance within that domain. Exclude unrelated senses and parts of speech. The example must use a retained sense.")
         prompt += "\nDomain guidance: " + context
 
     try:

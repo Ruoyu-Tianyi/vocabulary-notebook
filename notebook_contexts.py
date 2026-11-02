@@ -7,9 +7,9 @@ import re
 import uuid
 
 PRESETS = {
-    "finance": {"label": "金融", "prompt": "Interpret the word in finance, investment and accounting. Prioritize established financial senses and use a realistic financial example."},
-    "law": {"label": "法律", "prompt": "Interpret the word in legal study, contracts and legal proceedings. Prioritize established legal senses and use a realistic legal example."},
-    "medicine": {"label": "医药", "prompt": "Interpret the word in medicine, pharmacy and clinical study. Prioritize established medical senses and use a realistic medical example, not treatment advice."},
+    "finance": {"label": "金融", "prompt": "Interpret the word in finance, investment and accounting. Include only established financial senses and use a realistic financial example."},
+    "law": {"label": "法律", "prompt": "Interpret the word in legal study, contracts and legal proceedings. Include only established legal senses and use a realistic legal example."},
+    "medicine": {"label": "医药", "prompt": "Interpret the word in medicine, pharmacy and clinical study. Include only established medical senses and use a realistic medical example, not treatment advice."},
 }
 
 
@@ -28,5 +28,5 @@ def prompt_for(notebook_id):
     if not preset:
         return ""
     return (preset["prompt"] + " Keep the required JSON structure, Chinese definitions and English example. "
-            "If no specialized sense exists, give the ordinary meaning in a relevant context. "
+            "Exclude general-language senses and senses belonging only to other domains, even if more common. Do not append a general dictionary list. If the input is valid but has no established sense in this domain, set definition to n. 该词在当前专业语境下暂无明确专门释义 and example to an empty string; retain its phonetic. This is not an invalid word: do not return three empty fields. "
             "Do not invent a specialized meaning or accept invalid spelling just to fit the domain.")
