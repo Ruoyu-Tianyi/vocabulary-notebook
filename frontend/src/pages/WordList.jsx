@@ -225,13 +225,13 @@ export default function WordList({ searchInputRef }) {
         <input
           ref={searchInputRef}
           type="text"
-          aria-label="搜索单词或释义"
+          aria-label="搜索英文单词或中文译文"
           aria-keyshortcuts="/ Escape"
-          placeholder="搜索单词或释义…"
+          placeholder="搜索英文单词或中文译文…"
           autoComplete="off"
           spellCheck={false}
           value={q}
-          onChange={e => { setQ(e.target.value); setPage(1) }}
+          onChange={e => { setQ(e.target.value); setLetter(''); setPage(1) }}
           onKeyDown={event => {
             if (event.key !== 'Escape' || !isShortcutEvent(event)) return
             event.preventDefault()
