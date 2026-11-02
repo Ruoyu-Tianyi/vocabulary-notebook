@@ -23,15 +23,14 @@ export default function App() {
   }, [])
   const searchInputRef = useRef(null)
   const [helpOpen, setHelpOpen] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const toggleHelp = useCallback(() => setHelpOpen(o => !o), [])
 
   useGlobalShortcuts({ searchInputRef, toggleHelp })
 
   return (
-    <div className={`app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
+    <div className="app top-navigation-app">
       <a className="skip-link" href="#main-content">跳到主要内容</a>
-      <AppHeader dueCount={dueCount} onOpenHelp={() => setHelpOpen(true)} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(value => !value)} />
+      <AppHeader dueCount={dueCount} onOpenHelp={() => setHelpOpen(true)} />
       <main className="app-main" id="main-content" tabIndex={-1}>
         <Routes key={location.pathname.startsWith('/word/') || ['/settings', '/sync-settings'].includes(location.pathname) ? location.pathname : cloudVersion}>
           <Route path="/" element={<WordList searchInputRef={searchInputRef} />} />

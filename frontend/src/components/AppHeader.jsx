@@ -7,7 +7,7 @@ import NavigationIcon from './NavigationIcon'
 import { getGlobalShortcutAction } from '../lib/globalShortcuts'
 import { isShortcutEvent } from '../lib/keyboard'
 
-export default function AppHeader({ dueCount, onOpenHelp, sidebarCollapsed, onToggleSidebar }) {
+export default function AppHeader({ dueCount, onOpenHelp }) {
   const location = useLocation()
   const detailsRef = useRef(null)
   const summaryRef = useRef(null)
@@ -49,7 +49,7 @@ export default function AppHeader({ dueCount, onOpenHelp, sidebarCollapsed, onTo
     { to: `/review${notebookQuery}`, label: '复习', icon: 'review', active: location.pathname === '/review', badge: dueCount },
   ]
 
-  return <header className="app-header" onKeyDown={event => {
+  return <header className="app-header single-row-header" onKeyDown={event => {
     // 全局操作可离开菜单；其余按键留给导航，避免操作背后的复习卡片。
     if (getGlobalShortcutAction(event)) {
       if (open) closeTools(event.key === '?')
@@ -58,15 +58,12 @@ export default function AppHeader({ dueCount, onOpenHelp, sidebarCollapsed, onTo
     event.stopPropagation()
     if (event.key === 'Escape' && open && isShortcutEvent(event)) { event.preventDefault(); closeTools(true) }
   }}>
-    <button type="button" className="sidebar-toggle" aria-label={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'} title={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'} aria-expanded={!sidebarCollapsed} aria-controls="learning-navigation" onClick={onToggleSidebar}>
-      <NavigationIcon name={sidebarCollapsed ? 'expand' : 'collapse'} />
-    </button>
     <div className="header-topline">
       <h1 className="app-title"><Link to="/" aria-label="Vocove"><span className="brand-mark"><NavigationIcon name="words" /></span><span>Vocove<span className="brand-caption">个人词汇本</span></span></Link></h1>
       <details className={`header-tools${isSettings ? ' is-current' : ''}`} ref={detailsRef}
         onToggle={event => setOpen(event.currentTarget.open)}>
         <summary className="header-tools-trigger" ref={summaryRef} aria-expanded={open} aria-controls="header-tools-panel"
-          aria-label={`设置与工具${hasProblem ? `，${problemLabel}` : ''}`} title={sidebarCollapsed ? '设置与工具' : undefined}>
+          aria-label={`设置与工具${hasProblem ? `，${problemLabel}` : ''}`} title="设置与工具">
           <NavigationIcon name="settings" />
           <span>设置与工具</span>
           {hasProblem && <span className="header-attention" aria-hidden="true" />}
@@ -97,7 +94,7 @@ export default function AppHeader({ dueCount, onOpenHelp, sidebarCollapsed, onTo
       <nav className="app-nav" aria-label="学习导航">
         {links.map(link => <Link key={link.icon} to={link.to} className={`primary-nav-link${link.active ? ' active' : ''}`}
           aria-current={link.active ? 'page' : undefined}
-          title={sidebarCollapsed ? link.label : undefined}
+          title={link.label}
           aria-label={link.badge > 0 ? `${link.label}，全部单词本共 ${link.badge} 个待复习` : link.label}>
           <NavigationIcon name={link.icon} />
           <span>{link.label}</span>

@@ -330,114 +330,44 @@ textarea::placeholder { color: var(--text-muted); opacity: .85; }
 }
 .help-modal-content { border-radius: 16px; }
 
-/* ─── Desktop navigation ─────────────────── */
-.sidebar-toggle { border-radius: 8px; }
-.nav-shortcut { display: none; }
-@media (min-width: 1024px) {
-  .app {
-    display: grid;
-    grid-template-columns: 248px minmax(0, 1fr);
-    gap: clamp(24px, 3vw, 48px);
-    max-width: none;
-    padding: 0 clamp(24px, 3vw, 48px) 0 0;
-  }
-  .app-header {
-    position: sticky;
-    top: 0;
-    display: flex;
-    flex-direction: column;
-    align-self: start;
-    height: 100dvh;
-    min-height: 420px;
-    padding: 20px 12px 16px;
-    background: color-mix(in srgb, var(--surface) 70%, var(--bg));
-    margin: 0;
-    border: 0;
-    border-right: 1px solid var(--border);
-  }
-  .app-header::after { display: none; }
-  .header-topline { display: contents; }
-  .app-title { order: 0; font-size: 20px; padding: 0 44px 0 8px; }
-  .app-title a { gap: 10px; }
-  .brand-mark { width: 28px; height: 36px; border: 0; background: transparent; }
-  .brand-mark .navigation-icon { width: 23px; height: 23px; }
-  .header-navigation {
-    order: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    margin-top: 28px;
-  }
-  .navigation-label { display: block; padding: 0 12px; margin: 20px 0 4px; font-size: 11px; letter-spacing: .06em; }
-  .app-nav { display: flex; flex-direction: column; gap: 4px; }
-  .primary-nav-link {
-    justify-content: flex-start;
-    min-height: 44px;
-    padding: 10px 12px;
-    border: 1px solid transparent;
-    border-radius: 10px;
-    gap: 12px;
-  }
-  .primary-nav-link:hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
-  .primary-nav-link.active { color: var(--heading); border-color: transparent; background: color-mix(in srgb, var(--accent) 14%, var(--bg)); font-weight: 600; }
-  .primary-nav-link .nav-badge { margin-left: auto; }
-  .header-add { justify-content: flex-start; gap: 12px; margin: 0; min-height: 44px; padding: 10px 12px; border-radius: 10px; color: var(--heading); background: var(--bg); border: 1px solid var(--border); box-shadow: 0 2px 5px rgb(0 0 0 / 3%); }
-  .header-add:hover, .header-add.active { color: var(--accent-text); background: var(--surface-raised); border-color: var(--accent); }
-  .nav-shortcut { display: inline-grid; place-items: center; margin-left: auto; width: 22px; height: 22px; color: var(--text-dim); background: transparent; border: 1px solid var(--border); border-radius: 5px; font: 11px var(--font-sans, sans-serif); }
-  .header-tools { order: 2; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
-  .header-tools-trigger { justify-content: flex-start; width: 100%; padding: 10px 13px; }
-  .header-tools-chevron { margin-left: auto; }
-  .header-tools-panel { top: auto; bottom: calc(100% + 12px); left: 0; right: auto; }
-  .app-main {
-    justify-self: center;
-    max-width: var(--content-max);
-    padding: 40px 0 72px;
-  }
-  .sidebar-toggle {
-    display: grid;
-    place-items: center;
-    position: absolute;
-    right: 16px;
-    top: 23px;
-    width: 32px;
-    height: 32px;
-    min-height: 32px;
-    padding: 0;
-    color: var(--text-dim);
-    background: transparent;
-    border: 1px solid transparent;
-    cursor: pointer;
-  }
-  .app.sidebar-collapsed { grid-template-columns: 72px minmax(0, 1fr); }
-  .sidebar-collapsed .app-header { padding: 20px 10px 16px; }
-  .sidebar-collapsed .app-title { padding: 0; }
-  .sidebar-collapsed .sidebar-toggle { position: static; order: 0; align-self: center; margin-top: 12px; }
-  .sidebar-collapsed .nav-shortcut { display: none; }
-  .sidebar-collapsed .app-title { align-self: center; }
-  .sidebar-collapsed .app-title a > span:last-child,
-  .sidebar-collapsed .navigation-label,
-  .sidebar-collapsed .primary-nav-link > span,
-  .sidebar-collapsed .header-add > span,
-  .sidebar-collapsed .header-tools-trigger > span:not(.header-attention),
-  .sidebar-collapsed .header-tools-chevron { display: none; }
-  .sidebar-collapsed .header-navigation { margin-top: 20px; }
-  .sidebar-collapsed .primary-nav-link { position: relative; padding: 12px; justify-content: center; }
-  .sidebar-collapsed .primary-nav-link .nav-badge {
-    display: grid;
-    position: absolute;
-    right: 1px;
-    top: 1px;
-    min-width: 16px;
-    height: 16px;
-    padding: 0 2px;
-    font-size: 9px;
-  }
-  .sidebar-collapsed .header-add,
-  .sidebar-collapsed .header-tools-trigger { padding: 10px; justify-content: center; }
-  .sidebar-collapsed .header-tools-trigger { position: relative; }
-  .sidebar-collapsed .header-attention { position: absolute; top: 7px; right: 7px; }
-  .sidebar-collapsed .header-tools-panel { left: calc(100% + 12px); bottom: 0; }
+/* One navigation row at every width; compact labels without hiding destinations. */
+.app.top-navigation-app { display: block; max-width: 1500px; padding: 0 32px 48px; }
+.app .single-row-header { display: flex; flex-direction: row; align-items: center; gap: 28px; position: relative; height: auto; min-height: 0; padding: 20px 0; margin: 0 0 32px; border: 0; border-bottom: 1px solid var(--border); }
+.single-row-header::after { display: none; }
+.single-row-header .header-topline { display: contents; }
+.single-row-header .app-title { order: 0; padding: 0; font-size: 22px; flex: 0 0 auto; margin: 0; }
+.single-row-header .app-title a { gap: 9px; }
+.single-row-header .brand-mark { width: 32px; height: 36px; background: transparent; border: 0; }
+.single-row-header .brand-mark .navigation-icon { width: 24px; height: 24px; }
+.single-row-header .brand-caption, .single-row-header .navigation-label, .nav-shortcut { display: none; }
+.single-row-header .header-navigation { order: 1; display: flex; flex-direction: row; align-items: center; flex: 1; gap: 12px; margin: 0; padding: 0; min-width: 0; }
+.single-row-header .app-nav { display: flex; flex-direction: row; align-items: center; gap: 4px; flex: 0 1 auto; margin: 0; padding: 0; border: 0; }
+.single-row-header .primary-nav-link { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; gap: 8px; min-height: 44px; padding: 10px 14px; border: 1px solid transparent; border-radius: 10px; white-space: nowrap; }
+.single-row-header .primary-nav-link.active { color: var(--heading); background: color-mix(in srgb, var(--accent) 14%, var(--bg)); border-color: transparent; font-weight: 600; }
+.single-row-header .primary-nav-link:hover { background: var(--surface); }
+.single-row-header .header-add { order: 2; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; gap: 8px; margin: 0 0 0 auto; padding: 10px 14px; min-height: 44px; border-radius: 10px; white-space: nowrap; }
+.single-row-header .header-tools { order: 2; flex: 0 0 auto; margin: 0; padding: 0; border: 0; }
+.single-row-header .header-tools-trigger { display: flex; justify-content: center; gap: 8px; min-width: 44px; min-height: 44px; padding: 10px; }
+.single-row-header .header-tools-trigger > span:not(.header-attention), .single-row-header .header-tools-chevron { display: none; }
+.single-row-header .header-tools-panel { position: absolute; top: calc(100% + 10px); bottom: auto; left: auto; right: 0; width: 310px; max-height: calc(100dvh - 112px); }
+.top-navigation-app .app-main { width: 100%; max-width: var(--content-max); margin-inline: auto; padding: 0 0 40px; }
+@media (max-width: 760px) {
+  .app.top-navigation-app { padding-inline: 16px; }
+  .app .single-row-header { gap: 12px; padding: 14px 0; margin-bottom: 24px; }
+  .single-row-header .header-navigation { gap: 6px; }
+  .single-row-header .primary-nav-link { padding: 10px; }
+  .single-row-header .header-add > span { display: none; }
+}
+@media (max-width: 600px) {
+  .app .single-row-header { gap: 8px; }
+  .single-row-header .app-title a > span:last-child { display: none; }
+  .single-row-header .header-navigation { gap: 4px; }
+  .single-row-header .app-nav { flex: 1; justify-content: space-around; gap: 0; }
+  .single-row-header .primary-nav-link { position: relative; min-width: 44px; padding: 10px; }
+  .single-row-header .primary-nav-link > span:not(.nav-badge) { display: none; }
+  .single-row-header .nav-badge { position: absolute; right: 0; top: 0; min-width: 15px; height: 15px; padding: 0 2px; font-size: 9px; }
+  .single-row-header .header-add { padding: 10px; min-width: 44px; }
+  .single-row-header .header-tools-panel { position: fixed; top: 74px; left: 12px; right: 12px; width: auto; max-height: calc(100dvh - 90px); }
 }
 
 @media (min-width: 1400px) {
