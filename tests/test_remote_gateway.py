@@ -90,3 +90,22 @@ def test_untrusted_socket_rejected(keys):
 @pytest.mark.parametrize('key,value', [('public_origin','http://words.example.com'), ('issuer','https://evil.example'),('email',''),('audience','')])
 def test_incomplete_config_cannot_start(key, value):
     with pytest.raises(ValueError): validate_settings({**SETTINGS,key:value})
+
+
+def test_large_request_is_not_forwarded(client):
+    connection, seen = client
+    response = connection.post('/api/words', content=b'x' * (2 * 1024 * 1024 + 1),
+                               headers={'origin': SETTINGS['public_origin']})
+    assert response.status_code == 413
+    assert not seen
+
+
+def test_backend_failure_is_safe_and_does_not_leak_internal_details(keys):
+    def unavailable(request):
+        raise httpx.ConnectError('private internal details', request=request)
+    app = create_gateway(SETTINGS, transport=httpx.MockTransport(unavailable))
+    app.state.verifier = verifier(keys)
+    with TestClient(app, base_url=SETTINGS['public_origin']) as connection:
+        response = connection.get('/api/words', headers={'cf-access-jwt-assertion': token(keys)})
+    assert response.status_code == 503
+    assert 'private internal details' not in response.text

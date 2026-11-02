@@ -34,3 +34,12 @@ def test_search_keeps_notebook_and_date_scopes(client):
     assert [w['word'] for w in result['words']] == ['Contract']
     assert client.get('/api/words',params={'q':'不存在的释义'}).json()['total'] == 0
     assert client.get('/api/words',params={'q':'　 '}).json()['total'] == 4
+
+
+def test_imported_fullwidth_text_and_casefold_are_searchable(client, monkeypatch):
+    data = app.load_words()
+    data['words'][0].update(word='ＣＯＮＴＲＡＣＴ', definition='n. Straße；ＡＢＣ证券')
+    monkeypatch.setattr(app, 'load_words', lambda: copy.deepcopy(data))
+    for query in ('contract', 'abc', 'STRASSE'):
+        assert [word['id'] for word in client.get('/api/words', params={'q': query}).json()['words']] == ['1']
+    assert app.load_words()['words'][0]['word'] == 'ＣＯＮＴＲＡＣＴ'

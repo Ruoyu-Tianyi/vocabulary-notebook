@@ -1386,13 +1386,17 @@ def delete_word(word_id: str):
 
 # ─── 导出辅助函数 ─────────────────────────────────────────
 
+def _search_text(value: str) -> str:
+    return unicodedata.normalize("NFKC", value).strip().casefold()
+
+
 def _filter_words(data: dict, q: str, date: str, sort: str = "", letter: str = "", notebook_id: str = "") -> list:
     words = _notebook_words(data, notebook_id)
     if date:
         words = [w for w in words if w["created_at"].startswith(date)]
     if q:
-        ql = unicodedata.normalize("NFKC", q).strip().casefold()
-        words = [w for w in words if ql in w["word"].lower() or ql in w["definition"].lower()]
+        ql = _search_text(q)
+        words = [w for w in words if ql in _search_text(w["word"]) or ql in _search_text(w["definition"])]
     if letter:
         l = letter.lower()
         words = [w for w in words if w["word"].lower().startswith(l)]

@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- 搜索同时规范化查询与存储文本，兼容导入的全角词条；私人网关配置独占创建并限制 Unix 文件权限。
+- 贡献跟踪见 [上游 PR 状态](docs/CONTRIBUTIONS.md)。
+
 ### Tianyi fork 1.5.1-tianyi.1
 
 - 同步上游 v1.5.1（ddae801），采用其多模型、语境单词本、界面和 Electron/NSIS/DMG 更新架构。
