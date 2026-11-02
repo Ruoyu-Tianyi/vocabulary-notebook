@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- 修复内置 DeepSeek 词汇补全未显式关闭思考模式导致的额外等待；恢复 JSON 输出与 2048 tokens 上限，保留连接测试、其他供应商及自定义 API 的原有行为。
+
 ## [v1.5.1] - 2026-10-30
 
 - 修复 macOS 应用内更新下载遇到 GitHub 重定向时失败；改用 Electron `net.request` 逐跳处理，保留 HTTPS 官方域名限制、跳转次数上限、文件大小与 SHA256 校验。

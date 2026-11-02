@@ -64,13 +64,15 @@ def test_anthropic_pagination(monkeypatch):
 @pytest.mark.parametrize('provider,json_output', [
     ('deepseek', True), ('deepseek', False), ('openai', True), ('custom', True),
 ])
-def test_dictionary_options_are_limited_to_deepseek_enrichment(monkeypatch, provider, json_output):
+@pytest.mark.parametrize('base_url', ['https://api.deepseek.com', 'https://gateway.example/v1'])
+def test_dictionary_options_are_limited_to_deepseek_enrichment(monkeypatch, provider, json_output, base_url):
     original = httpx.AsyncClient
     seen = []
 
     def handle(request):
         body = json.loads(request.content)
         seen.append(body)
+        assert str(request.url) == base_url + '/chat/completions'
         assert body['model'] == 'deepseek-flash'
         assert body['stream'] is False
         assert body['messages'] == [{'role': 'user', 'content': 'Return JSON'}]
@@ -88,7 +90,8 @@ def test_dictionary_options_are_limited_to_deepseek_enrichment(monkeypatch, prov
                         lambda **kw: original(transport=httpx.MockTransport(handle), **kw))
     # A matching model name/host must not enable provider-specific options for custom APIs.
     settings = providers.resolve(provider, {'model': 'deepseek-flash', 'api_key': 'synthetic',
-                                            'base_url': 'https://api.deepseek.com'})
+                                            'base_url': base_url, 'provider': 'deepseek'})
+    assert settings['provider'] == provider
     assert asyncio.run(providers.complete(settings, 'Return JSON', json_output=json_output)) == 'OK'
     assert len(seen) == 1
 
