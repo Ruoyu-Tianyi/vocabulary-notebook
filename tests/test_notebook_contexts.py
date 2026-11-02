@@ -126,6 +126,7 @@ def test_course_context_reaches_both_model_providers(monkeypatch, provider, pres
     if preset:
         assert 'Domain guidance: ' + context in seen[0]
         assert 'Exclude unrelated senses and parts of speech' in seen[0]
+        assert 'list EVERY distinct meaning' not in seen[0]
         assert 'do not return three empty fields' in seen[0]
         assert '"bank" — "银行" comes before "河岸"' not in seen[0]
     else:
