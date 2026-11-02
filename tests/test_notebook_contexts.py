@@ -106,18 +106,28 @@ def test_restoring_deleted_context_book_keeps_context(client):
 
 
 @pytest.mark.parametrize('provider', ['ollama', 'deepseek'])
-def test_course_context_reaches_both_model_providers(monkeypatch, provider):
+@pytest.mark.parametrize('preset', ['', 'finance', 'law', 'medicine'])
+@pytest.mark.parametrize('definition', ['n. 证券', 'n. 该词在当前专业语境下暂无明确专门释义'])
+def test_course_context_reaches_both_model_providers(monkeypatch, provider, preset, definition):
     real_client = httpx.AsyncClient
     seen = []
     def respond(request):
         payload = json.loads(request.content)
         prompt = payload['prompt'] if provider == 'ollama' else payload['messages'][0]['content']
         seen.append(prompt)
-        result = json.dumps({'phonetic': '/test/', 'definition': 'n. 证券', 'example': 'A security is traded.'})
+        result = json.dumps({'phonetic': '/test/', 'definition': definition, 'example': '' if '暂无' in definition else 'A security is traded.'})
         return httpx.Response(200, json={'response': result} if provider == 'ollama' else {'choices': [{'message': {'content': result}}]})
     monkeypatch.setattr(app.config, 'get_provider', lambda: provider)
     monkeypatch.setattr(app.config, 'get_deepseek_config', lambda: {'api_key': 'synthetic', 'model': 'test'})
     monkeypatch.setattr(app.httpx, 'AsyncClient', lambda **kw: real_client(transport=httpx.MockTransport(respond), **kw))
-    result = asyncio.run(app.enrich_word('Security', 'Finance: Bonds and markets'))
-    assert result[1] == 'n. 证券'
-    assert 'Domain guidance: Finance: Bonds and markets' in seen[0]
+    context = contexts.prompt_for('ctx-' + preset + '-0123456789ab') if preset else ''
+    result = asyncio.run(app.enrich_word('Security', context))
+    assert result[1] == definition
+    if preset:
+        assert 'Domain guidance: ' + context in seen[0]
+        assert 'Exclude unrelated senses and parts of speech' in seen[0]
+        assert 'do not return three empty fields' in seen[0]
+        assert '"bank" — "银行" comes before "河岸"' not in seen[0]
+    else:
+        assert '"bank" — "银行" comes before "河岸"' in seen[0]
+        assert 'Domain guidance:' not in seen[0]
