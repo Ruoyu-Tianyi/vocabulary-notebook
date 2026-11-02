@@ -1,6 +1,6 @@
 # Tianyi 分支：沿用上游桌面应用
 
-本仓库基于 [Eric Zhou 的 Vocove](https://github.com/Eric-Zhou-0302/vocove)，保留 MIT 许可和完整 Git 历史。2026-11-02 同步至 v1.5.1 / `ddae801`；本分支构建版本为 `1.5.1-tianyi.3`。
+本仓库基于 [Eric Zhou 的 Vocove](https://github.com/Eric-Zhou-0302/vocove)，保留 MIT 许可和完整 Git 历史。2026-11-02 同步至 v1.5.1 / `ddae801`；本分支构建版本为 `1.5.1-tianyi.4`。
 
 ## 使用与迭代方式
 
