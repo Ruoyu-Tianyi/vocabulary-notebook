@@ -14,6 +14,12 @@ import Notebooks from './pages/Notebooks'
 
 export default function App() {
   const location = useLocation()
+  const [remote, setRemote] = useState(true)
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch('/api/access-mode', { signal: controller.signal }).then(r => r.status === 401 ? (window.location.replace('/login'), Promise.reject()) : r.ok ? r.json() : Promise.reject()).then(data => setRemote(data.remote !== false)).catch(() => {})
+    return () => controller.abort()
+  }, [])
   const dueCount = useDueCount()
   const [cloudVersion, setCloudVersion] = useState(0)
   useEffect(() => {
@@ -31,15 +37,15 @@ export default function App() {
   return (
     <div className={`app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <a className="skip-link" href="#main-content">跳到主要内容</a>
-      <AppHeader dueCount={dueCount} onOpenHelp={() => setHelpOpen(true)} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(value => !value)} />
+      <AppHeader remote={remote} dueCount={dueCount} onOpenHelp={() => setHelpOpen(true)} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed(value => !value)} />
       <main className="app-main" id="main-content" tabIndex={-1}>
         <Routes key={location.pathname.startsWith('/word/') || ['/settings', '/sync-settings'].includes(location.pathname) ? location.pathname : cloudVersion}>
           <Route path="/" element={<WordList searchInputRef={searchInputRef} />} />
           <Route path="/notebooks" element={<Notebooks />} />
           <Route path="/word/new" element={<WordNew />} />
           <Route path="/word/:id" element={<WordDetail />} />
-          <Route path="/sync-settings" element={<SyncSettings />} />
-          <Route path="/settings" element={<ModelSettings />} />
+          <Route path="/sync-settings" element={remote ? <p>同步设置请在服务器电脑上管理。</p> : <SyncSettings />} />
+          <Route path="/settings" element={remote ? <p>模型设置请在服务器电脑上管理。</p> : <ModelSettings />} />
           <Route path="/review" element={<Review />} />
         </Routes>
       </main>

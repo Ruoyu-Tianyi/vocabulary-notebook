@@ -429,6 +429,11 @@ Reply ONLY with a JSON object, no other text:
 
 # ─── API: SSE 事件流 ──────────────────────────────────────
 
+@app.get("/api/access-mode")
+def access_mode():
+    return {"remote": False}
+
+
 @app.get("/api/events")
 async def event_stream(request: Request):
     """SSE 端点 — 推送 enrichment 完成事件"""

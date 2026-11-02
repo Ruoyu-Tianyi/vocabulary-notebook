@@ -3,3 +3,6 @@ pytest==9.0.3
 ruff==0.17.2
 # Starlette TestClient 使用；业务网络请求仍由 httpx 负责。
 httpx2==2.12.0
+
+# Run optional gateway security regressions in CI.
+-r requirements-remote.txt

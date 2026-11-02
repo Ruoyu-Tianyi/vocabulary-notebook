@@ -7,7 +7,7 @@ import NavigationIcon from './NavigationIcon'
 import { getGlobalShortcutAction } from '../lib/globalShortcuts'
 import { isShortcutEvent } from '../lib/keyboard'
 
-export default function AppHeader({ dueCount, onOpenHelp, sidebarCollapsed, onToggleSidebar }) {
+export default function AppHeader({ remote, dueCount, onOpenHelp, sidebarCollapsed, onToggleSidebar }) {
   const location = useLocation()
   const detailsRef = useRef(null)
   const summaryRef = useRef(null)
@@ -75,8 +75,9 @@ export default function AppHeader({ dueCount, onOpenHelp, sidebarCollapsed, onTo
         <div className="header-tools-panel" id="header-tools-panel">
           <div className="header-tools-heading">设置与工具<span>连接与偏好</span></div>
           <nav aria-label="应用设置" onClick={event => { if (event.target.closest('a')) closeTools() }}>
-            <ModelStatus onProblemChange={setModelProblem} />
-            <CloudStatus onProblemChange={setSyncProblem} />
+            {!remote && <ModelStatus onProblemChange={setModelProblem} />}
+            {!remote && <CloudStatus onProblemChange={setSyncProblem} />}
+            {remote && <><p>私人学习 · 数据保存在你的电脑</p><form method="post" action="/logout"><button type="submit" className="utility-item">退出登录</button></form></>}
           </nav>
           <div className="header-tools-preferences">
             <ThemeToggle />
