@@ -90,6 +90,9 @@ export default function AppHeader({ dueCount, onOpenHelp, sidebarCollapsed, onTo
       </details>
     </div>
     <div className="header-navigation" id="learning-navigation">
+      <Link to={`/word/new${notebookQuery}`} className={`header-add${adding ? ' active' : ''}`} aria-label="添加单词" aria-keyshortcuts="n" title="添加单词（N）" aria-current={adding ? 'page' : undefined}>
+        <NavigationIcon name="plus" /><span>添加单词</span><kbd className="nav-shortcut" aria-hidden="true">N</kbd>
+      </Link>
       <p className="navigation-label">学习空间</p>
       <nav className="app-nav" aria-label="学习导航">
         {links.map(link => <Link key={link.icon} to={link.to} className={`primary-nav-link${link.active ? ' active' : ''}`}
@@ -101,9 +104,7 @@ export default function AppHeader({ dueCount, onOpenHelp, sidebarCollapsed, onTo
           {link.badge > 0 && <span className="nav-badge" aria-hidden="true">{link.badge > 99 ? '99+' : link.badge}</span>}
         </Link>)}
       </nav>
-      <Link to={`/word/new${notebookQuery}`} className={`header-add${adding ? ' active' : ''}`} aria-label="添加单词" aria-keyshortcuts="n" title="添加单词（N）" aria-current={adding ? 'page' : undefined}>
-        <NavigationIcon name="plus" /><span>添加单词</span>
-      </Link>
+
     </div>
   </header>
 }

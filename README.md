@@ -207,3 +207,9 @@ npm --prefix frontend run dev -- --host 127.0.0.1
 语境类型随单词本身份同步，Drive v1 操作字段及复习算法不变；导出、恢复备份也保留类型。旧客户端仍可读取和复习，但只能按通用语境补全，因此请在所有需要专业补全的设备上更新客户端。
 
 [查看语境单词本界面示例](docs/images/context-notebooks.png)（演示数据）。
+
+桌面侧栏采用分组导航：顶部快速添加、中部学习入口、底部设置与工具；可折叠为图标栏，保留待复习数量与键盘操作。窄屏继续使用紧凑顶部导航。
+
+![桌面导航浅色示例](docs/images/sidebar-light.png)
+
+![桌面导航深色示例](docs/images/sidebar-dark.png)
