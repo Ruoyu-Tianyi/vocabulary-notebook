@@ -46,4 +46,18 @@
 
 ## 开发与打包
 
+### Windows 本地一键升级
+
+先在桌面应用的“同步与备份”完成同步；文件夹模式另在 Google Drive 桌面版确认上传进度。双击仓库根目录 `upgrade-desktop.cmd`，默认安装项目内打包依赖、检查前端与桌面逻辑并构建当前源码，再退出原应用、创建 `.backups/desktop-upgrades/` 本地备份、校验安装包 SHA-256、静默升级原目录。使用原项目 `.venv` 启动工具，打包使用独立 `.venv-desktop`，需要 Python 3.11+ 与 Node.js 22.13+ 或 24+。
+
+已有本仓库可信构建包时可跳过构建（同目录必须有对应 `.sha256`）：
+
+```powershell
+.\.venv\Scripts\python.exe tools\desktop_upgrade.py --installer "安装包绝对路径.exe"
+```
+
+默认升级 `%LOCALAPPDATA%\Programs\Vocove`，保护 `%APPDATA%\Vocove` 资料；可用 `--install-dir` / `--profile` 指定其他绝对路径。构建在退出应用前进行；不会拉取 Git、强制终止进程、修改环境变量或发布 Release。安装后用独立空资料运行 `--smoke-test`（含后端健康、页面、保存和复习），再次逐文件校验正式词库、完整 data 目录、本机凭据和桌面偏好，全部通过后才重启原资料。可传 `--no-restart` 保持停机。
+
+传 `--build-only` 可只构建和校验安装包，不停止或更新应用；构建流程也运行完整后端回归。备份包含密钥，只留本机；升级报告与冒烟日志保存在备份目录。失败保留现场且不自动恢复快照，以免覆盖后来记录。现有内置“帮助 → 检查更新”仍用于正式 Release；本地工具用于开发构建，不代替发布流程。SHA-256 校验不代表签名认证，只运行自己构建或可信仓库下载的安装包。
+
 遵循上游 [CONTRIBUTING](../CONTRIBUTING.md)。`desktop/` 的构建工作流在 Windows 和两种 Mac 架构分别测试、构建和冒烟验证。私人网关依赖位于 `requirements-remote.txt`；常规桌面不需要启动网关。自动验证只使用临时目录与模拟外部请求。

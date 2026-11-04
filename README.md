@@ -4,6 +4,8 @@
 
 > Tianyi 扩展分支：基于 Eric Zhou 的 Vocove v1.5.1，沿用上游界面与 Windows/macOS 桌面架构。安装、升级与补充功能见 **[分支使用指南](docs/FORK.md)**。下方上游下载链接为原版；本分支安装包从 [Desktop packages](https://github.com/Ruoyu-Tianyi/vocabulary-notebook/actions/workflows/desktop-build.yml) 获取。
 
+Windows 本地开发可双击 `upgrade-desktop.cmd` 完成构建、备份、校验和升级；正式资料校验与独立冒烟检查通过后才重启，详见[本地升级工具](docs/FORK.md#windows-本地一键升级)。
+
 [![Website](https://img.shields.io/badge/Website-vocove.cn-b89962)](https://www.vocove.cn)
 [![CI](https://github.com/Eric-Zhou-0302/vocove/actions/workflows/ci.yml/badge.svg)](https://github.com/Eric-Zhou-0302/vocove/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
