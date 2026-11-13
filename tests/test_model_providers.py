@@ -61,11 +61,18 @@ def test_anthropic_pagination(monkeypatch):
     assert asyncio.run(providers.discover(providers.resolve('anthropic', {'api_key': 'test'}))) == ['first', 'second']
 
 
+@pytest.fixture(autouse=True)
+def _reset_hint_cache():
+    providers._HINTS_UNSUPPORTED.clear()
+    yield
+    providers._HINTS_UNSUPPORTED.clear()
+
+
 @pytest.mark.parametrize('provider,json_output', [
-    ('deepseek', True), ('deepseek', False), ('openai', True), ('custom', True),
+    ('deepseek', True), ('deepseek', False), ('openai', True), ('custom', True), ('qwen', True),
 ])
 @pytest.mark.parametrize('base_url', ['https://api.deepseek.com', 'https://gateway.example/v1'])
-def test_dictionary_options_are_limited_to_deepseek_enrichment(monkeypatch, provider, json_output, base_url):
+def test_dictionary_speed_options_follow_provider(monkeypatch, provider, json_output, base_url):
     original = httpx.AsyncClient
     seen = []
 
@@ -76,24 +83,77 @@ def test_dictionary_options_are_limited_to_deepseek_enrichment(monkeypatch, prov
         assert body['model'] == 'deepseek-flash'
         assert body['stream'] is False
         assert body['messages'] == [{'role': 'user', 'content': 'Return JSON'}]
-        if provider == 'deepseek' and json_output:
+        if not json_output:
+            assert set(body) == {'model', 'stream', 'messages'}
+        elif provider == 'deepseek':
             assert body['thinking'] == {'type': 'disabled'}
             assert body['response_format'] == {'type': 'json_object'}
-            assert body['max_tokens'] == 2048
-        else:
-            assert 'thinking' not in body
-            assert 'response_format' not in body
+            assert body['max_tokens'] == providers.DICTIONARY_MAX_TOKENS
+        elif provider == 'openai':
+            assert body['max_completion_tokens'] == providers.DICTIONARY_MAX_TOKENS
             assert 'max_tokens' not in body
+        elif provider == 'qwen':
+            assert body['enable_thinking'] is False
+            assert body['max_tokens'] == providers.DICTIONARY_MAX_TOKENS
+        else:
+            # Custom APIs only receive the standard output limit, never vendor flags
+            # chosen from a matching model name or host.
+            assert set(body) == {'model', 'stream', 'messages', 'max_tokens'}
         return httpx.Response(200, json={'choices': [{'message': {'content': 'OK'}}]})
 
     monkeypatch.setattr(httpx, 'AsyncClient',
                         lambda **kw: original(transport=httpx.MockTransport(handle), **kw))
-    # A matching model name/host must not enable provider-specific options for custom APIs.
     settings = providers.resolve(provider, {'model': 'deepseek-flash', 'api_key': 'synthetic',
                                             'base_url': base_url, 'provider': 'deepseek'})
     assert settings['provider'] == provider
     assert asyncio.run(providers.complete(settings, 'Return JSON', json_output=json_output)) == 'OK'
     assert len(seen) == 1
+
+
+def test_rejected_speed_options_fall_back_to_plain_request(monkeypatch):
+    original = httpx.AsyncClient
+    seen = []
+
+    def handle(request):
+        body = json.loads(request.content)
+        seen.append(body)
+        if 'max_tokens' in body:
+            return httpx.Response(400, json={'error': 'unsupported parameter'})
+        return httpx.Response(200, json={'choices': [{'message': {'content': 'OK'}}]})
+
+    monkeypatch.setattr(httpx, 'AsyncClient',
+                        lambda **kw: original(transport=httpx.MockTransport(handle), **kw))
+    settings = providers.resolve('moonshot', {'model': 'm', 'api_key': 'synthetic'})
+    assert asyncio.run(providers.complete(settings, 'JSON', json_output=True)) == 'OK'
+    assert asyncio.run(providers.complete(settings, 'JSON', json_output=True)) == 'OK'
+    # The unsupported model is remembered, so later lookups skip the failing attempt.
+    assert ['max_tokens' in body for body in seen] == [True, False, False]
+
+
+@pytest.mark.parametrize('provider,response,truncated', [
+    ('deepseek', {'choices': [{'finish_reason': 'length', 'message': {'content': '{'}}]},
+     {'choices': [{'finish_reason': 'stop', 'message': {'content': 'OK'}}]}),
+    ('anthropic', {'stop_reason': 'max_tokens', 'content': [{'type': 'text', 'text': '{'}]},
+     {'stop_reason': 'end_turn', 'content': [{'type': 'text', 'text': 'OK'}]}),
+    ('ollama', {'done_reason': 'length', 'response': '{'}, {'done_reason': 'stop', 'response': 'OK'}),
+])
+def test_truncated_lookup_retries_with_larger_limit(monkeypatch, provider, response, truncated):
+    original = httpx.AsyncClient
+    limits = []
+
+    def handle(request):
+        body = json.loads(request.content)
+        limit = body['options']['num_predict'] if provider == 'ollama' else body['max_tokens']
+        limits.append(limit)
+        if provider == 'ollama':
+            assert body['keep_alive'] and body['think'] is False
+        return httpx.Response(200, json=response if len(limits) == 1 else truncated)
+
+    monkeypatch.setattr(httpx, 'AsyncClient',
+                        lambda **kw: original(transport=httpx.MockTransport(handle), **kw))
+    settings = providers.resolve(provider, {'model': 'm', 'api_key': 'synthetic'})
+    assert asyncio.run(providers.complete(settings, 'JSON', json_output=True)) == 'OK'
+    assert limits == [providers.DICTIONARY_MAX_TOKENS, providers._RETRY_MAX_TOKENS]
 
 
 def test_enrichment_requests_deepseek_dictionary_options(monkeypatch):
@@ -108,7 +168,7 @@ def test_enrichment_requests_deepseek_dictionary_options(monkeypatch):
         assert request.url == 'https://api.deepseek.com/chat/completions'
         assert body['thinking'] == {'type': 'disabled'}
         assert body['response_format'] == {'type': 'json_object'}
-        assert body['max_tokens'] == 2048
+        assert body['max_tokens'] == providers.DICTIONARY_MAX_TOKENS
         assert 'contract' in body['messages'][0]['content']
         return httpx.Response(200, json={'choices': [{'message': {'content': json.dumps({
             'phonetic': '/test/', 'definition': 'n. 合同', 'example': 'A contract.'

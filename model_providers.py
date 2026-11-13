@@ -1,4 +1,5 @@
 """供应商目录及协议适配；不依赖真实用户配置。"""
+import asyncio
 import os
 from urllib.parse import urlsplit
 
@@ -87,25 +88,100 @@ async def discover(settings):
     return sorted(models)
 
 
+# 词典查询输出很短（一般 < 400 token），限制长度并关闭推理可显著缩短等待。
+DICTIONARY_MAX_TOKENS = 1024
+_RETRY_MAX_TOKENS = 2048
+# 本地模型常驻内存，避免每次查词都重新加载。
+OLLAMA_KEEP_ALIVE = '30m'
+# 供应商拒绝提速参数时回退到最简请求，并记住该模型以免重复失败。
+_HINTS_UNSUPPORTED = set()
+_client_state = {}
+
+
+def _client():
+    """复用连接（keep-alive），省去每次查词的 TCP/TLS 握手。"""
+    loop = asyncio.get_running_loop()
+    factory = httpx.AsyncClient
+    if (_client_state.get('loop') is not loop or _client_state.get('factory') is not factory
+            or _client_state['client'].is_closed):
+        _client_state.update(loop=loop, factory=factory, client=factory(timeout=120))
+    return _client_state['client']
+
+
+def _speed_hints(settings, max_tokens):
+    """仅用于词典查询的提速参数；各供应商只发送其文档化的字段。"""
+    provider = settings.get('provider')
+    protocol = settings['protocol']
+    model = str(settings.get('model', '')).lower()
+    if protocol == 'ollama':
+        return {'think': False, 'options': {'num_predict': max_tokens, 'temperature': 0}}
+    if protocol == 'anthropic':
+        return {'temperature': 0, 'thinking': {'type': 'disabled'}}
+    if provider == 'deepseek':
+        return {'thinking': {'type': 'disabled'}, 'response_format': {'type': 'json_object'},
+                'max_tokens': max_tokens}
+    if provider == 'openai':
+        hints = {'max_completion_tokens': max_tokens, 'response_format': {'type': 'json_object'}}
+        if model.startswith(('o1', 'o3', 'o4', 'gpt-5')):
+            hints['reasoning_effort'] = 'low'
+        else:
+            hints['temperature'] = 0
+        return hints
+    hints = {'max_tokens': max_tokens}
+    if provider == 'custom':
+        return hints
+    hints['temperature'] = 0
+    if provider in ('qwen', 'siliconflow'):
+        hints['enable_thinking'] = False
+    elif provider == 'zhipu':
+        hints['thinking'] = {'type': 'disabled'}
+    elif provider == 'gemini':
+        hints['reasoning_effort'] = 'none'
+    return hints
+
+
+def _truncated(protocol, data):
+    if protocol == 'ollama':
+        return data.get('done_reason') == 'length'
+    if protocol == 'anthropic':
+        return data.get('stop_reason') == 'max_tokens'
+    return (data.get('choices') or [{}])[0].get('finish_reason') == 'length'
+
+
 async def complete(settings, prompt, *, json_output=False):
     protocol = settings['protocol']
     payload = {'model': settings['model'], 'stream': False}
     if protocol == 'ollama':
         path = '/api/generate'
-        payload.update(prompt=prompt, format='json')
+        payload.update(prompt=prompt, format='json', keep_alive=OLLAMA_KEEP_ALIVE)
     else:
         path = '/messages' if protocol == 'anthropic' else '/chat/completions'
         payload['messages'] = [{'role': 'user', 'content': prompt}]
         if protocol == 'anthropic':
-            payload['max_tokens'] = 2048
-        elif settings.get('provider') == 'deepseek' and json_output:
-            # Dictionary lookups should not inherit DeepSeek's default thinking mode.
-            payload.update(thinking={'type': 'disabled'},
-                           response_format={'type': 'json_object'}, max_tokens=2048)
-    async with httpx.AsyncClient(timeout=settings.get('timeout', 120)) as client:
-        response = await client.post(settings['base_url'] + path, json=payload, headers=headers(settings))
+            payload['max_tokens'] = DICTIONARY_MAX_TOKENS if json_output else 2048
+    key = (settings.get('provider'), settings['base_url'], settings['model'])
+    use_hints = json_output and key not in _HINTS_UNSUPPORTED
+    max_tokens = DICTIONARY_MAX_TOKENS
+    client = _client()
+    timeout = settings.get('timeout', 120)
+    for _ in range(3):
+        body = {**payload, **(_speed_hints(settings, max_tokens) if use_hints else {})}
+        if protocol == 'anthropic' and use_hints:
+            body['max_tokens'] = max_tokens
+        response = await client.post(settings['base_url'] + path, json=body,
+                                     headers=headers(settings), timeout=timeout)
+        if use_hints and response.status_code in (400, 422):
+            # 兼容不支持提速参数的模型或网关：改用最简请求重试一次。
+            _HINTS_UNSUPPORTED.add(key)
+            use_hints = False
+            continue
         response.raise_for_status()
         data = response.json()
+        if use_hints and max_tokens < _RETRY_MAX_TOKENS and _truncated(protocol, data):
+            # 极少数多义词释义较长：被截断时放宽一次长度限制。
+            max_tokens = _RETRY_MAX_TOKENS
+            continue
+        break
     if protocol == 'ollama':
         return data['response'].strip()
     if protocol == 'anthropic':

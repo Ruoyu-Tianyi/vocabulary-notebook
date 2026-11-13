@@ -6,6 +6,7 @@ import SpacedReview from '../components/SpacedReview'
 import { useNotebooks } from '../useNotebooks'
 import { useTransientMessage } from '../useTransientMessage'
 import { getGlobalShortcutAction } from '../lib/globalShortcuts'
+import { rememberNotebook } from '../lib/notebookMemory'
 import '../components/ReviewPolish.css'
 
 export default function Review() {
@@ -14,6 +15,7 @@ export default function Review() {
   const { notebooks, loading: booksLoading, error: booksError, refresh: refreshBooks } = useNotebooks()
   const [mode, setMode] = useState('daily')
   const bookUnavailable = notebookId && !booksLoading && !booksError && !notebooks.some(book => book.id === notebookId)
+  useEffect(() => { if (notebooks.some(book => book.id === notebookId)) rememberNotebook(notebookId) }, [notebookId, notebooks])
 
   return (
     <div className="review-page">

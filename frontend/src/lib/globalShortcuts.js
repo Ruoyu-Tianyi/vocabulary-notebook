@@ -10,8 +10,9 @@ export function getGlobalShortcutAction(event) {
   return null
 }
 
-export function shortcutDestination(action, search = '') {
-  const notebookId = new URLSearchParams(search).get('notebook_id')
+export function shortcutDestination(action, search = '', fallbackNotebook = '') {
+  // Adding a word defaults to the notebook the user last switched to.
+  const notebookId = new URLSearchParams(search).get('notebook_id') || (action === 'add' ? fallbackNotebook : '')
   const query = notebookId ? `?${new URLSearchParams({ notebook_id: notebookId })}` : ''
   return `${action === 'add' ? '/word/new' : '/'}${query}`
 }

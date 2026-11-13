@@ -31,3 +31,9 @@ test('navigation shortcuts retain only the notebook scope and encode special not
   assert.equal(shortcutDestination('search'), '/')
   assert.equal(shortcutDestination('add', '?page=4'), '/word/new')
 })
+
+test('adding a word falls back to the last viewed notebook only when the URL has none', () => {
+  assert.equal(shortcutDestination('add', '', 'book-1'), '/word/new?notebook_id=book-1')
+  assert.equal(shortcutDestination('add', '?notebook_id=book-2', 'book-1'), '/word/new?notebook_id=book-2')
+  assert.equal(shortcutDestination('search', '', 'book-1'), '/')
+})

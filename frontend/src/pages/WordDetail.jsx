@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom'
 import { fetchWord, updateWord, deleteWord } from '../api'
 import { useNotebooks } from '../useNotebooks'
 import { isShortcutEvent } from '../lib/keyboard'
@@ -7,6 +7,10 @@ import { isShortcutEvent } from '../lib/keyboard'
 export default function WordDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const origin = location.state?.returnTo
+  const returnTo = typeof origin === 'string' && /^(\/word\/new|\/)(\?.*)?$/.test(origin) ? origin : '/'
+  const goBack = () => navigate(returnTo, { replace: true })
   const [word, setWord] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -130,13 +134,13 @@ export default function WordDetail() {
   if (error) return (
     <div className="empty-state">
       <p>{error}</p>
-      <button onClick={() => navigate(-1)}>返回列表</button>
+      <button onClick={goBack}>返回上一页</button>
     </div>
   )
 
   return (
     <div className="word-detail-page">
-      <button onClick={() => navigate(-1)} className="btn btn-ghost detail-back">← 返回</button>
+      <button onClick={goBack} className="btn btn-ghost detail-back">← 返回</button>
 
       {syncNotice && <p role="status">{syncNotice}</p>}
       {actionError && <p role="alert">{actionError}</p>}

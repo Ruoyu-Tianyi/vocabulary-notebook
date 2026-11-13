@@ -7,7 +7,12 @@ import { useNotebooks } from '../useNotebooks'
 import { useTransientMessage } from '../useTransientMessage'
 import NavigationIcon from '../components/NavigationIcon'
 import { isShortcutEvent } from '../lib/keyboard'
+import { lastNotebook, rememberNotebook, forgetNotebook } from '../lib/notebookMemory'
 import './NotebookPolish.css'
+
+// Keep the current entry session when navigating to a word and back, without
+// persisting private vocabulary in browser storage across application sessions.
+let entrySession = { word: '', addedWords: [] }
 
 function useProviderLabel() {
   const [label, setLabel] = useState('模型')
@@ -28,19 +33,40 @@ function useProviderLabel() {
 
 export default function WordNew() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const notebookId = searchParams.get('notebook_id') || 'default'
   const { notebooks, loading: booksLoading, error: booksError, refresh: refreshBooks } = useNotebooks()
+  // Without an explicit notebook, default to the one the user last switched to.
+  const remembered = lastNotebook()
+  const rememberedValid = remembered && (booksLoading || booksError || notebooks.some(book => book.id === remembered))
+  const notebookId = searchParams.get('notebook_id') || (rememberedValid ? remembered : 'default')
   const selectedBook = notebooks.find(book => book.id === notebookId)
-  const [word, setWord] = useState('')
+  useEffect(() => {
+    if (selectedBook) rememberNotebook(selectedBook.id)
+    else if (remembered && !booksLoading && !booksError && !rememberedValid) forgetNotebook(remembered)
+  }, [selectedBook, remembered, rememberedValid, booksLoading, booksError])
+  const [word, setWord] = useState(() => entrySession.word)
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useTransientMessage(null)
-  const [addedWords, setAddedWords] = useState([])
-  const addedRef = useRef([])
+  const [addedWords, setAddedWords] = useState(() => entrySession.addedWords)
+  const addedRef = useRef(addedWords)
   const inputRef = useRef(null)
   const composingRef = useRef(false)
   const compositionSubmitRef = useRef(false)
   const navigate = useNavigate()
   const providerLabel = useProviderLabel()
+  useEffect(() => { entrySession = { word, addedWords } }, [word, addedWords])
+  useEffect(() => {
+    let active = true
+    // Refresh edited definitions and removals after returning from details.
+    for (const entry of addedRef.current) {
+      fetchWord(entry.word.id).then(result => {
+        if (active) setAddedWords(previous => previous.map(item => item.word.id === entry.word.id
+          ? { ...item, ...result } : item))
+      }).catch(error => {
+        if (active && error.status === 404) setAddedWords(previous => previous.filter(item => item.word.id !== entry.word.id))
+      })
+    }
+    return () => { active = false }
+  }, [])
   useEffect(() => { addedRef.current = addedWords }, [addedWords])
   useEffect(() => {
     // 手机端不自动唤起键盘，保留用户先选择单词本的空间。

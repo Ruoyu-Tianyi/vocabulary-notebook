@@ -10,6 +10,7 @@ import EnrichProgress from '../components/EnrichProgress'
 import NavigationIcon from '../components/NavigationIcon'
 import { readLegacyWordSort } from '../lib/compat'
 import { isShortcutEvent } from '../lib/keyboard'
+import { rememberNotebook } from '../lib/notebookMemory'
 
 export default function WordList({ searchInputRef }) {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -19,6 +20,7 @@ export default function WordList({ searchInputRef }) {
   const { notebooks, error: notebookError, refresh: refreshNotebooks } = useNotebooks()
   const currentBook = notebooks.find(book => book.id === notebookId)
   const addUrl = `/word/new${notebookId ? `?notebook_id=${encodeURIComponent(notebookId)}` : ''}`
+  useEffect(() => { rememberNotebook(notebookId) }, [notebookId])
   const setPage = useCallback(newPage => {
     setSearchParams(previous => {
       const next = new URLSearchParams(previous)

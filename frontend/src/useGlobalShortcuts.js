@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { getGlobalShortcutAction, shortcutDestination } from './lib/globalShortcuts'
+import { lastNotebook } from './lib/notebookMemory'
 
 /**
  * 全局键盘快捷键。
@@ -37,7 +38,7 @@ export function useGlobalShortcuts({ searchInputRef, toggleHelp }) {
       } else if (location.pathname === '/word/new') {
         document.getElementById('new-word')?.focus()
       } else {
-        navigate(shortcutDestination(action, location.search))
+        navigate(shortcutDestination(action, location.search, lastNotebook()))
       }
     }
     window.addEventListener('keydown', handleKey)

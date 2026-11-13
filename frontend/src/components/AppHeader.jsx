@@ -6,6 +6,7 @@ import ThemeToggle from './ThemeToggle'
 import NavigationIcon from './NavigationIcon'
 import { getGlobalShortcutAction } from '../lib/globalShortcuts'
 import { isShortcutEvent } from '../lib/keyboard'
+import { lastNotebook } from '../lib/notebookMemory'
 
 export default function AppHeader({ remote, dueCount, onOpenHelp }) {
   const location = useLocation()
@@ -16,7 +17,7 @@ export default function AppHeader({ remote, dueCount, onOpenHelp }) {
   const [syncProblem, setSyncProblem] = useState(false)
   const isSettings = ['/settings', '/sync-settings'].includes(location.pathname)
   const adding = location.pathname === '/word/new'
-  const notebookId = new URLSearchParams(location.search).get('notebook_id')
+  const notebookId = new URLSearchParams(location.search).get('notebook_id') || lastNotebook()
   const notebookQuery = notebookId ? `?${new URLSearchParams({ notebook_id: notebookId })}` : ''
   const inWords = location.pathname === '/' || (location.pathname.startsWith('/word/') && !adding)
   const hasProblem = modelProblem || syncProblem

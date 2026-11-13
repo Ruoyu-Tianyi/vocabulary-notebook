@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { wordDetailPath } from '../lib/wordPaths.js'
 import NavigationIcon from './NavigationIcon'
 
@@ -17,9 +17,11 @@ function highlight(text, q) {
 }
 
 export default function WordCard({ word, q = '', notebookName }) {
+  const location = useLocation()
   return (
     <Link
       to={wordDetailPath(word.id)}
+      state={{ returnTo: location.pathname + location.search }}
       className="word-card"
     >
       <div className="word-card-top">
