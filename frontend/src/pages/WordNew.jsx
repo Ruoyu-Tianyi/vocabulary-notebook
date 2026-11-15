@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { createWord, fetchWord } from '../api'
 import { useSSE } from '../useSSE'
 import WordCard from '../components/WordCard'
@@ -72,6 +72,19 @@ export default function WordNew() {
     // 手机端不自动唤起键盘，保留用户先选择单词本的空间。
     if (window.matchMedia('(min-width: 641px) and (pointer: fine)').matches) inputRef.current?.focus()
   }, [])
+  // 嵌入模式：外层页面发来的单词直接填入输入框（仍需用户确认保存）。
+  const location = useLocation()
+  const prefillWord = location.state?.prefillWord
+  const prefillAt = location.state?.prefillAt
+  useEffect(() => {
+    if (!prefillWord) return
+    setWord(prefillWord)
+    const input = inputRef.current
+    if (input) {
+      input.focus({ preventScroll: false })
+      requestAnimationFrame(() => { try { input.setSelectionRange(prefillWord.length, prefillWord.length) } catch { /* not focusable */ } })
+    }
+  }, [prefillWord, prefillAt])
 
   const updateAdded = useCallback(result => {
     setAddedWords(previous => previous.map(entry => {
