@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import SyncSettings from './pages/Settings'
 import WordList from './pages/WordList'
 import WordNew from './pages/WordNew'
@@ -11,6 +11,7 @@ import { useGlobalShortcuts } from './useGlobalShortcuts'
 import { useDueCount } from './useDueCount'
 import HelpModal from './components/HelpModal'
 import Notebooks from './pages/Notebooks'
+import { readPrefillMessage, replyTarget, PREFILL_ACK_TYPE } from './lib/embedPrefill'
 
 export default function App() {
   const location = useLocation()
@@ -21,6 +22,21 @@ export default function App() {
     window.addEventListener('cloud-data-changed', refresh)
     return () => window.removeEventListener('cloud-data-changed', refresh)
   }, [])
+  // Embedded in another page's iframe: the parent may prefill the add-word box
+  // (see lib/embedPrefill.js). Saving still needs the user's confirmation.
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (window.parent === window) return undefined
+    const onMessage = event => {
+      const word = readPrefillMessage(event, window.parent)
+      if (!word) return
+      navigate('/word/new', { state: { prefillWord: word, prefillAt: Date.now() } })
+      try { event.source.postMessage({ type: PREFILL_ACK_TYPE, word }, replyTarget(event.origin)) } catch { /* Parent page closed. */ }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [navigate])
+
   const searchInputRef = useRef(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)

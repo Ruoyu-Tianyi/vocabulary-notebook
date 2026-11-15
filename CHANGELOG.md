@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- 嵌入其他页面（如学习笔记侧栏 iframe）时，父页面可发送 `{ type: 'vocove:prefill-word', word }` 把单词填入「添加单词」输入框并收到 `vocove:prefill-ack` 回执；只接受直接父窗口、最长 80 字符，仍需用户按 Enter 或「保存单词」确认，嵌入页面无法直接写入词库。
+
 ## [v1.5.1] - 2026-10-30
 
 - 修复 macOS 应用内更新下载遇到 GitHub 重定向时失败；改用 Electron `net.request` 逐跳处理，保留 HTTPS 官方域名限制、跳转次数上限、文件大小与 SHA256 校验。
